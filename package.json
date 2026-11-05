@@ -22,7 +22,7 @@
     "csv-parse": "7.0.3",
     "express": "5.3.0",
     "liquid-glass-react": "1.1.1",
-    "lucide-react": "0.577.0",
+    "lucide-react": "1.66.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "three": "0.187.0",
