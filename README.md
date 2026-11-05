@@ -6,6 +6,10 @@ A local personal-finance desktop app with interactive 3D cash flow, category ana
 
 Your data lives on your computer. Start with generated sample data, then connect your own Plaid account, an existing Actual Budget server, or import a CSV. No shared API keys, hosted service, analytics, or cloud database are included.
 
+![Finance Goblin overview with a 3D daily cash-flow chart, cash and credit balances, and category spending](docs/assets/dashboard.png)
+
+*Dashboard preview using generated sample data. No real bank information is shown.*
+
 ## Start locally
 
 Requirements: Apple Silicon Mac, Node.js 24, npm, and Apple's Xcode command-line tools (`xcode-select --install`). The current desktop builder has been exercised on macOS 15.8.1. Intel Mac, Windows and Linux installers are not supported yet. Source tests and the browser build also run on Linux.
