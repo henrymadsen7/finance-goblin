@@ -16,8 +16,11 @@ test("local API isolates demo data, enforces origin/CSRF, validates imports and 
     stdio: ["ignore", "pipe", "pipe"],
   });
   t.after(async () => {
-    child.kill("SIGTERM");
-    await once(child, "exit");
+    if (child.exitCode === null && child.signalCode === null) {
+      const exited = once(child, "exit");
+      child.kill("SIGTERM");
+      await exited;
+    }
     rmSync(dir, { recursive: true, force: true });
   });
   await new Promise((resolve, reject) => {
@@ -109,8 +112,11 @@ test("desktop service rejects ordinary browser access and supports scoped one-ti
     stdio: ["ignore", "pipe", "pipe"],
   });
   t.after(async () => {
-    child.kill("SIGTERM");
-    await once(child, "exit");
+    if (child.exitCode === null && child.signalCode === null) {
+      const exited = once(child, "exit");
+      child.kill("SIGTERM");
+      await exited;
+    }
     rmSync(dir, { recursive: true, force: true });
   });
   await new Promise((resolve, reject) => {

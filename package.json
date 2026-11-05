@@ -7,13 +7,14 @@
     "dev": "node server/index.js --dev",
     "build": "vite build",
     "start": "node server/index.js",
-    "test": "node --test test/*.test.js",
+    "test": "node --test --test-timeout=15000 test/*.test.js",
     "check": "tsc --noEmit",
     "format": "prettier --write src server test vite.config.js tsconfig.json",
     "desktop": "electron .",
     "desktop:build": "npm run build && node scripts/package-desktop.mjs",
     "desktop:install": "npm run desktop:build -- --install",
-    "check:source": "node scripts/check-source.mjs"
+    "check:source": "node scripts/check-source.mjs",
+    "pretest": "npm run build"
   },
   "dependencies": {
     "@actual-app/api": "26.11.0",
