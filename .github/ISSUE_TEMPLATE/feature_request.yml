@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a focused improvement.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What task is difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe a concrete example with synthetic data.
+    validations:
+      required: true

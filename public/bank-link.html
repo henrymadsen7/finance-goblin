@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Finance Goblin — Bank authorization</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/bank-link.css" />
+  </head>
+  <body>
+    <main>
+      <img
+        src="/favicon.svg"
+        width="56"
+        height="56"
+        alt="Finance Goblin"
+      /><span class="eyebrow">FINANCE GOBLIN · BANK AUTHORIZATION</span>
+      <h1>Connect securely.<br />Then get back to your day.</h1>
+      <p id="status" role="status">Preparing your bank connection…</p>
+      <span id="environment"></span
+      ><button id="connect" disabled>Continue to Plaid →</button>
+      <p class="note">
+        Your dashboard stays in the desktop app. This browser window is only for
+        authorizing bank access. Finance Goblin never receives your bank
+        password.
+      </p>
+      <p class="error" id="error" role="alert"></p>
+    </main>
+    <script type="module" src="/bank-link.js"></script>
+  </body>
+</html>

@@ -1,0 +1,975 @@
+/* User-controlled palette and dashboard modules. */
+:root {
+  --surface: #171e28;
+  --text: #edf1f5;
+  --accent: #c0ef91;
+  --border-color: #647487;
+  --radius: 18px;
+  --on-accent: #172318;
+}
+:root,
+body,
+.app {
+  color: var(--text);
+}
+body {
+  background:
+    radial-gradient(
+      ellipse at 75% -10%,
+      color-mix(in srgb, var(--accent) 10%, transparent),
+      transparent 55%
+    ),
+    var(--bg);
+}
+.app .sidebar {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--surface) 80%, transparent),
+    color-mix(in srgb, var(--bg) 93%, transparent)
+  );
+  border-color: var(--line);
+}
+.app .topbar {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border-color: var(--line);
+}
+.app .panel,
+.app .metric {
+  background:
+    linear-gradient(
+      140deg,
+      color-mix(in srgb, var(--text) 3%, transparent),
+      transparent
+    ),
+    color-mix(in srgb, var(--surface) 91%, transparent);
+  border-color: var(--line);
+  border-radius: var(--radius);
+}
+.app .metric.featured {
+  background:
+    radial-gradient(
+      ellipse at 0 0,
+      color-mix(in srgb, var(--accent) 13%, transparent),
+      transparent 90%
+    ),
+    var(--surface);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--surface));
+}
+.app .primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+.app .primary:hover {
+  background: color-mix(in srgb, var(--accent) 85%, var(--text));
+}
+.app button:focus-visible,
+.app input:focus-visible,
+.app select:focus-visible,
+.app a:focus-visible {
+  outline-color: var(--accent);
+}
+.app .brand-icon {
+  color: var(--accent);
+}
+.app nav button,
+.app .sidebar-utility,
+.app .sync-control,
+.app .icon-button,
+.app .date-range,
+.app .scope-caption,
+.app .metric-label,
+.app .metric-bottom > span,
+.app .legend span,
+.app .chart-footer,
+.app .chart-axis,
+.app .small-copy,
+.app .transaction-bank,
+.app .account-mini small,
+.app .account-note,
+.app .summary-label {
+  color: var(--muted);
+}
+.app nav button.active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.app .bank-switcher,
+.app .periods {
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
+  border-color: var(--line);
+}
+.app .bank-switcher button,
+.app .periods button {
+  color: var(--muted);
+}
+.app .bank-switcher button.active,
+.app .periods button.active {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 10%, var(--surface));
+}
+.app .button,
+.app .search,
+.app select,
+.app input {
+  background-color: color-mix(in srgb, var(--surface) 94%, var(--text));
+  border-color: var(--line);
+  color: var(--text);
+}
+.app .search input {
+  background: transparent;
+}
+.app .text-button,
+.app .merchant strong,
+.app .account-mini strong,
+.app .category-list strong,
+.app .connection-row strong {
+  color: var(--text);
+}
+.app td,
+.app th,
+.app .subtle-chip,
+.app .category-tag,
+.app p {
+  color: var(--muted);
+}
+.app .category-tag,
+.app .subtle-chip,
+.app .merchant-icon {
+  background: color-mix(in srgb, var(--text) 5%, var(--surface));
+  border-color: var(--line);
+}
+.app .metric > strong {
+  color: var(--text);
+}
+.app .amount-expense {
+  color: var(--red);
+}
+.app .amount.green {
+  color: var(--green);
+}
+.app .green {
+  color: var(--green) !important;
+}
+.app .red {
+  color: var(--red) !important;
+}
+.app .yellow {
+  color: var(--yellow) !important;
+}
+.app .muted {
+  color: var(--muted) !important;
+}
+.app .segmented {
+  background: var(--bg);
+  border-color: var(--line);
+}
+.app .segmented button {
+  color: var(--muted);
+}
+.app .segmented button.active {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--text);
+}
+.app .daily-heading p,
+.app .payment-note {
+  color: var(--muted);
+}
+.app .day-card {
+  background: var(--surface);
+  border-color: var(--line);
+}
+.app .day-card:hover,
+.app .day-card.selected {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-color: var(--accent);
+}
+.app .account-card > p,
+.app .account-card > .muted,
+.app .provider-card p,
+.app .provider-card > small,
+.app .connection-row small,
+.app .source-note {
+  color: var(--muted);
+}
+.app .connection-row {
+  border-color: var(--line);
+}
+.app dialog {
+  color: var(--text);
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--surface) 95%, var(--text)),
+    var(--surface)
+  );
+  border-color: var(--line);
+  border-radius: calc(var(--radius) + 5px);
+}
+.app dialog p,
+.app dialog label,
+.app .form-note {
+  color: var(--muted);
+}
+.app .toast {
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
+  color: var(--text);
+  border-color: var(--line);
+}
+.app .load-more,
+.app .connection-options > summary {
+  color: var(--text);
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+.dashboard-widget {
+  min-width: 0;
+}
+.dashboard-widget > .panel,
+.dashboard-widget > .metric {
+  height: 100%;
+}
+.dashboard-widget .metric {
+  min-height: 149px;
+}
+.dashboard-widget .metric > strong {
+  font-size: clamp(24px, 2.1vw, 32px);
+}
+.dashboard-widget .metric-bottom {
+  min-height: 22px;
+}
+.widget-cashFlow .landscape {
+  height: 305px;
+}
+.widget-accounts .account-mini {
+  padding: 17px 0;
+}
+.widget-accounts .account-mini strong {
+  font-size: 11px;
+}
+.widget-accounts .account-mini b {
+  font-size: 12px;
+}
+.activity-charts {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) minmax(0, 2fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+.activity-charts .landscape {
+  height: 270px;
+}
+.activity-charts + .transactions-panel {
+  margin-top: 20px;
+}
+.profile-settings {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.profile-settings strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 9px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+}
+.sidebar-bottom {
+  padding-top: 18px;
+}
+nav {
+  margin-top: 28px;
+  gap: 5px;
+}
+nav button {
+  height: 42px;
+}
+/* Shared cursor inspector, kept above both WebGL and SVG layers. */
+.market-tooltip {
+  position: absolute;
+  z-index: 12;
+  width: 226px;
+  pointer-events: none;
+  padding: 14px 15px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border-color));
+  border-radius: 13px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(20px) saturate(125%);
+  box-shadow:
+    0 16px 45px #0005,
+    inset 0 1px 0 color-mix(in srgb, var(--text) 14%, transparent);
+  font-size: 11px;
+}
+.market-tooltip:before,
+.market-tooltip:after {
+  content: "";
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+}
+.market-tooltip:before {
+  left: -1px;
+  top: -1px;
+  border-left: 2px solid var(--accent);
+  border-top: 2px solid var(--accent);
+  border-top-left-radius: 13px;
+}
+.market-tooltip:after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  border-bottom-right-radius: 13px;
+}
+.tooltip-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 13px;
+}
+.tooltip-dot {
+  height: 5px;
+  width: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+.tooltip-numbers {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.tooltip-numbers > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+.tooltip-numbers strong {
+  font-size: 12px;
+}
+.tooltip-net {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  margin-top: 11px;
+  font-size: 10px;
+}
+.tooltip-net strong {
+  font-size: 12px;
+}
+.chart-crosshair {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  z-index: 4;
+  width: 1px;
+  background: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--accent) 60%, transparent),
+    transparent
+  );
+  border-left: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
+  pointer-events: none;
+}
+.three-crosshair {
+  opacity: 0.45;
+}
+.daily-chart {
+  height: 290px;
+  position: relative;
+  margin: 15px 22px 0;
+  touch-action: pan-y;
+}
+.daily-chart:after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--zero-percent);
+  border-top: 1px solid var(--line);
+  pointer-events: none;
+}
+.daily-columns {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: 2px;
+}
+.daily-column {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border-radius: 4px;
+}
+.daily-column i {
+  position: absolute;
+  width: 27%;
+  min-height: 0;
+  border-radius: 3px 3px 0 0;
+  opacity: 0.82;
+  transition: opacity 0.12s;
+}
+.daily-column.hovered,
+.daily-column:focus-visible {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.daily-column.hovered i,
+.daily-column.selected i {
+  opacity: 1;
+  filter: drop-shadow(0 0 3px currentColor);
+}
+.green-bar {
+  background: var(--green);
+  color: var(--green);
+}
+.red-bar {
+  background: var(--red);
+  color: var(--red);
+}
+.yellow-bar {
+  background: var(--yellow);
+  color: var(--yellow);
+}
+.cash-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.daily-chart.line .daily-column {
+  background: none;
+}
+.daily-chart.line .daily-column.hovered {
+  background: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--accent) 8%, transparent)
+  );
+}
+.category-spend {
+  padding-bottom: 10px;
+}
+.category-spend .panel-head {
+  padding-bottom: 12px;
+  min-height: 56px;
+}
+.category-spend h2 {
+  font-size: 15px;
+}
+.category-bars {
+  padding: 0 20px 8px;
+  display: grid;
+  gap: 3px;
+}
+.category-bars > button {
+  width: 100%;
+  position: relative;
+  text-align: left;
+  padding: 11px 9px;
+  border-radius: 9px;
+  min-height: 52px;
+}
+.category-bars > button:hover,
+.category-bars > button.active {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.category-bar-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  font-size: 11px;
+  color: var(--text);
+}
+.category-bar-label strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.category-bar-track {
+  display: block;
+  height: 5px;
+  margin-top: 10px;
+  background: color-mix(in srgb, var(--text) 5%, var(--surface));
+  border-radius: 3px;
+  overflow: hidden;
+}
+.category-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  min-width: 2px;
+}
+.category-hover {
+  display: block;
+  visibility: hidden;
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 9px;
+}
+.category-hover.visible {
+  visibility: visible;
+}
+.category-show-all {
+  margin: 5px 25px 10px;
+}
+/* Payment actions open the issuer; no payment credentials enter the app. */
+.payments-panel {
+  padding-bottom: 8px;
+}
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 22px;
+}
+.payment-card {
+  padding: 21px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 4px);
+  background: color-mix(in srgb, var(--text) 2%, transparent);
+  min-width: 0;
+}
+.payment-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+.payment-card-top > div:first-child {
+  min-width: 0;
+}
+.payment-card-top strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.payment-card-top span {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.payment-current {
+  flex-shrink: 0;
+  text-align: right;
+}
+.payment-current b {
+  font: 600 22px var(--heading);
+  display: block;
+  white-space: nowrap;
+  margin-top: 6px;
+}
+.payment-current span {
+  margin-top: 0;
+}
+.payment-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-top: 24px;
+}
+.payment-dates > div {
+  flex: 1;
+  min-width: 70px;
+}
+.payment-dates span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 7px;
+}
+.payment-dates strong {
+  font: 600 20px var(--heading);
+}
+.payment-dates > div:last-child:nth-child(3) strong {
+  font: 500 11px var(--heading);
+}
+.payment-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 23px;
+  flex-wrap: wrap;
+}
+.payment-unset {
+  padding: 20px 0 0;
+  font-size: 12px;
+}
+.payment-note {
+  padding: 0 22px 16px;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.payments-panel.compact .payment-grid {
+  padding-top: 12px;
+}
+.payment-card.compact {
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+}
+.payment-card.compact .payment-card-top strong {
+  font-size: 12px;
+}
+.payment-card.compact .payment-dates {
+  margin-top: 0;
+  gap: 14px;
+}
+.payment-card.compact .payment-dates strong {
+  font-size: 15px;
+}
+.payment-card.compact .payment-actions {
+  margin-top: 0;
+}
+.payment-card.compact .button {
+  padding: 7px 11px;
+  font-size: 11px;
+  min-height: 30px;
+}
+.autopay-help {
+  margin-top: 19px;
+}
+.autopay-help summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+}
+.autopay-help p {
+  font-size: 11px;
+  margin: 10px 0;
+}
+.payment-editor {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.payment-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.payment-editor input[type="number"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  padding: 9px;
+  border-radius: 9px;
+}
+.payment-editor .autopay-check {
+  grid-column: 1/-1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.payment-editor .autopay-check input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+.payment-editor .primary {
+  grid-column: 1/-1;
+}
+.account-balance-kind {
+  margin-top: 25px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.account-balance-kind + .account-balance {
+  margin-top: 8px;
+}
+/* Profile-based settings keep personalization outside the source tree. */
+dialog.settings-dialog {
+  width: min(680px, 92vw);
+  max-width: 680px;
+}
+.settings-tabs {
+  display: flex;
+  gap: 5px;
+  margin: 22px 0 18px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+.settings-tabs button {
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings-tabs button[aria-selected="true"] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.settings-section {
+  min-height: 245px;
+}
+.theme-presets {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.theme-presets button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid;
+  padding: 11px 15px;
+  border-radius: 11px;
+  font-size: 12px;
+  flex: 1;
+}
+.theme-presets button span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 15px;
+}
+.app .color-grid label {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 5px 9px;
+  margin: 0;
+}
+.color-grid label > span {
+  grid-column: 1/-1;
+  font-size: 11px;
+}
+.app input[type="color"] {
+  padding: 2px;
+  width: 34px;
+  height: 31px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.color-grid code {
+  font-size: 10px;
+  color: var(--muted);
+  background: transparent;
+}
+.app .radius-control {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  margin: 22px 0 14px;
+}
+.radius-control input[type="range"] {
+  flex: 1;
+  width: auto;
+  accent-color: var(--accent);
+}
+.radius-control span {
+  font-size: 11px;
+}
+.palette-options summary {
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 10px 0;
+}
+.palette-swatches {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.palette-swatches label {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.palette-swatches label > button {
+  font-size: 18px;
+  color: var(--muted);
+}
+.palette-swatches .button {
+  min-height: 31px;
+  padding: 5px 10px;
+}
+.widget-options {
+  display: grid;
+  gap: 4px;
+}
+.widget-options > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  border-bottom: 1px solid var(--line);
+  gap: 10px;
+}
+.app .widget-options label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  margin: 0;
+  color: var(--text);
+}
+.app .widget-options input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.widget-options > div > span {
+  display: flex;
+  gap: 3px;
+}
+.settings-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+}
+.settings-actions .text-button {
+  font-size: 10px;
+}
+.settings-actions .primary {
+  flex-shrink: 0;
+}
+.settings-section > label:not(.radius-control) {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 18px 0;
+  font-size: 12px;
+}
+@media (max-width: 1200px) {
+  .dashboard-widget.widget-activity,
+  .dashboard-widget.widget-accounts {
+    grid-column: span 12 !important;
+  }
+  .payment-current b {
+    font-size: 19px;
+  }
+  .payment-card-top {
+    flex-direction: column;
+  }
+  .payment-current {
+    text-align: left;
+  }
+  .activity-charts {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 1050px) {
+  .dashboard-widget.widget-cashFlow,
+  .dashboard-widget.widget-categories {
+    grid-column: span 12 !important;
+  }
+  .payment-grid {
+    grid-template-columns: 1fr;
+  }
+  .payment-card.compact .payment-card-top {
+    flex-direction: row;
+  }
+  .dashboard-widget[class*="widget-"] .metric > strong {
+    font-size: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .payment-card.compact {
+    grid-template-columns: minmax(100px, 1fr) auto;
+  }
+  .payment-card.compact .payment-actions {
+    grid-column: 1 / -1;
+  }
+  .dashboard-widget {
+    grid-column: span 12 !important;
+  }
+  .dashboard-widget.widget-cash,
+  .dashboard-widget.widget-credit,
+  .dashboard-widget.widget-income,
+  .dashboard-widget.widget-expenses,
+  .dashboard-widget.widget-net,
+  .dashboard-widget.widget-pending {
+    grid-column: span 6 !important;
+  }
+  .dashboard-grid {
+    gap: 12px;
+  }
+  .profile-settings {
+    margin-bottom: 5px;
+  }
+  .color-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .theme-presets {
+    flex-wrap: wrap;
+  }
+  .theme-presets button {
+    font-size: 11px;
+    padding: 9px;
+  }
+  .settings-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .category-bars {
+    padding: 0 14px 7px;
+  }
+  .payment-grid {
+    padding: 16px;
+  }
+  .daily-chart {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .app .panel,
+  .app .metric,
+  .app .metric.featured,
+  .app .sidebar,
+  .app .topbar,
+  .app dialog,
+  .app .market-tooltip {
+    background: var(--surface);
+    backdrop-filter: none;
+  }
+}
