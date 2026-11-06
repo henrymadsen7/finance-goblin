@@ -25,7 +25,7 @@ Open **Finance Goblin** in `~/Applications`. The installed app bundles Node and 
 
 To update, quit with **Command-Q**, then run `npm ci` and `npm run desktop:install -- --replace`. The prior bundle is preserved in `~/Library/Caches/Finance Goblin/Build`. Your vault is outside the bundle and survives updates. Closing the window leaves sync running; Command-Q quits. The app does not start at login.
 
-For development, quit the desktop app and run `npm run dev`. Browser development uses a separate `.local` vault. Use sample data for development. For desktop development, run `npm run build` and `npm run desktop`.
+For development, quit the desktop app and run `npm run dev`. Open the private, single-use launch link printed in the terminal within five minutes; ordinary localhost requests are rejected. Do not share the link or logs containing it. Browser development uses a separate `.local` vault and supports Plaid Sandbox only. Use sample data for development. For desktop development, run `npm run build` and `npm run desktop`.
 
 ## Connect your information
 
@@ -60,7 +60,9 @@ The app checks its local snapshot every minute and retrieves available bank upda
 
 ## Privacy and limits
 
-The desktop renderer is sandboxed; a private session gates its loopback API. The separate bank browser session cannot read your dashboard. Data and credentials are encrypted in `~/Library/Application Support/Finance Goblin/vault`, with an owner-only key file beside the database. Back up both privately. This is a trusted single-user design, not a hardware keychain, Touch ID lock, or protection from another process running as you. Hide amounts is visual masking only.
+The desktop renderer is sandboxed; a private, in-memory session gates its loopback API. Each temporary bank browser session is bound to one connection, cannot read the dashboard, and is revoked on completion. Data and credentials use AES-256-GCM; macOS Keychain protects the vault key. Bank access tokens stay in the local service, not the renderer. The provider transport permits only the implemented data, linking and revocation operations; no payments or transfers.
+
+Each installation is a separate single-user workspace with its own provider credentials. This is not a hosted multi-user service. Keychain protection reduces file-theft risk; it cannot guarantee protection from malware, a compromised OS/provider, a malicious build, or someone using your unlocked app. No independent security audit or notarized release has been completed. Hide amounts is visual masking only. See [security protections, upgrade and recovery limits](docs/SECURITY_MODEL.md) before connecting real accounts.
 
 Bank data can lag, categories can be incomplete, and this preview does not offer transaction recategorization or account reconciliation. No financial advice, payments, transfers or trading are implemented. A real Actual ledger has not yet been verified. See [security](SECURITY.md) and [architecture](docs/ARCHITECTURE.md).
 

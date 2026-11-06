@@ -29,6 +29,7 @@ test("source guard rejects tracked secrets and data while leaving ignored local 
     ["leak.txt", "ghp_" + "A".repeat(36)],
     ["statement.csv", "date,payee,amount"],
     ["tls.pem", "synthetic certificate"],
+    ["vault.key.os", "synthetic wrapped key"],
     ["leak.txt", ["", "Users", "someone", "private"].join("/")],
   ]) {
     writeFileSync(join(root, path), content);

@@ -17,7 +17,7 @@ const files = execFileSync("git", ["ls-files", "-z", "--", prefix || "."], {
   .split("\0")
   .filter(Boolean);
 const blocked =
-  /(^|\/)(\.local|node_modules|dist|coverage|\.git)(\/|$)|(^|\/)\.env(\.|$)|\.(sqlite(?:-\w+)?|db(?:-\w+)?|key|pem|p12|pfx|log|ics|csv|tsv|ofx|qfx|qif|dmg|zip)$/i;
+  /(^|\/)(\.local|node_modules|dist|coverage|\.git)(\/|$)|(^|\/)\.env(\.|$)|\.(sqlite(?:-\w+)?|db(?:-\w+)?|key(?:\.os)?|pem|p12|pfx|log|ics|csv|tsv|ofx|qfx|qif|dmg|zip)$/i;
 const signatures = [
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
   /\bgh[pousr]_[A-Za-z0-9]{30,}\b/,

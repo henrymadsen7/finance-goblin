@@ -32,6 +32,8 @@ async function connect(receivedRedirectUri) {
       await new Promise((resolve, reject) => {
         const script = document.createElement("script");
         script.src = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
+        script.nonce =
+          document.querySelector('meta[name="fg-csp-nonce"]')?.content || "";
         script.onload = resolve;
         script.onerror = () =>
           reject(
@@ -44,8 +46,10 @@ async function connect(receivedRedirectUri) {
       ...(receivedRedirectUri ? { receivedRedirectUri } : {}),
       onSuccess: async (publicToken, metadata) => {
         try {
-          if (info.itemId) await api("sync");
-          else {
+          if (info.itemId) {
+            const result = await api("sync");
+            if (result.warning) error.textContent = result.warning;
+          } else {
             const result = await api("provider/exchange", {
               publicToken,
               institution: metadata.institution?.name || "Connected bank",

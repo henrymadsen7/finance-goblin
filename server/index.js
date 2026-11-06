@@ -6,6 +6,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { createServer as createHttpsServer } from "node:https";
 import { z } from "zod";
 import { createStore } from "./store.js";
+import { runtimeSettings } from "./runtime.js";
 import { migratePlaidCategories } from "./migrations.js";
 import {
   preferencesSchema,
@@ -15,16 +16,37 @@ import {
 import { demoData, importCSV, categories } from "./domain.js";
 import { plaid, syncItem, linkTokenParams } from "./plaid.js";
 import { syncActual } from "./actual.js";
-import { createDesktopAccess, desktopEvents } from "./desktop-access.js";
+import {
+  createDesktopAccess,
+  desktopEvents,
+  AccessError,
+  createBrowserAccess,
+} from "./desktop-access.js";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const port = Number(process.env.PORT || 4310);
 const secure = !!(process.env.LOCAL_TLS_CERT && process.env.LOCAL_TLS_KEY);
 const origin = `${secure ? "https" : "http"}://localhost:${port}`;
-const store = createStore(process.env.FINANCE_DATA_DIR || join(root, ".local"));
+const runtime = runtimeSettings();
+const store = createStore(
+  process.env.FINANCE_DATA_DIR || join(root, ".local"),
+  { key: runtime.vaultKey },
+);
 migratePlaidCategories(store);
 const csrf = randomBytes(32).toString("hex");
-const desktopSecret = process.env.FINANCE_DESKTOP_SESSION;
+const desktopSecret =
+  runtime.desktopSecret || process.env.FINANCE_DESKTOP_SESSION;
+delete process.env.FINANCE_DESKTOP_SESSION;
 const desktopAccess = desktopSecret ? createDesktopAccess(desktopSecret) : null;
+const browserAccess = desktopAccess ? null : createBrowserAccess();
+if (
+  !desktopAccess &&
+  store.get("config", "plaid")?.environment === "production"
+) {
+  store.close();
+  throw new Error(
+    "Production Plaid vaults must be opened through the Finance Goblin desktop app. No bank data was served.",
+  );
+}
 const app = express();
 app.disable("x-powered-by");
 app.use((req, res, next) => {
@@ -37,7 +59,19 @@ app.use((req, res, next) => {
     "X-Frame-Options": "DENY",
     "Cache-Control": "no-store",
     "Cross-Origin-Resource-Policy": "same-origin",
+    "Permissions-Policy":
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   });
+  res.locals.cspNonce = randomBytes(18).toString("base64");
+  const bankPage =
+    !desktopAccess ||
+    ["/desktop-connect", "/oauth/callback"].includes(req.path);
+  // The app cannot fetch remote resources. The isolated bank page allows only
+  // Plaid's documented Link endpoints; never allow arbitrary HTTPS script hosts.
+  if (!process.argv.includes("--dev"))
+    res.set({
+      "Content-Security-Policy": `default-src 'self'; script-src 'self' 'nonce-${res.locals.cspNonce}'${bankPage ? " https://cdn.plaid.com/link/v2/stable/link-initialize.js" : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'${bankPage ? " https://production.plaid.com https://sandbox.plaid.com" : ""}; frame-src ${bankPage ? "https://cdn.plaid.com" : "'none'"}; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+    });
   if (desktopAccess) {
     if (req.path === "/desktop/bank-authorize" && req.method === "GET") {
       const token = desktopAccess.redeemTicket(String(req.query.ticket || ""));
@@ -56,13 +90,41 @@ app.use((req, res, next) => {
       });
       return res.redirect("/desktop-connect");
     }
-    const access = desktopAccess.authorize(req.headers.cookie, req.path);
+    const access = desktopAccess.authorize(
+      req.headers.cookie,
+      req.path,
+      req.method,
+    );
     if (!access)
       return res.status(401).json({
         error:
           "Open Finance Goblin from Applications to access this workspace.",
       });
     req.desktopAccess = access;
+  }
+  if (browserAccess) {
+    if (req.path === "/browser-authorize" && req.method === "GET") {
+      const token = browserAccess.redeem(String(req.query.ticket || ""));
+      if (!token)
+        return res
+          .status(401)
+          .send(
+            "This launch link expired or was already used. Restart Finance Goblin and use the new link printed in your terminal.",
+          );
+      res.cookie("fg-browser", token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure,
+        path: "/",
+      });
+      return res.redirect("/");
+    }
+    if (!browserAccess.authorize(req.headers.cookie))
+      return res
+        .status(401)
+        .send(
+          "Use the private launch link printed in your Finance Goblin terminal. Do not share that link.",
+        );
   }
   if (req.path.startsWith("/api/")) {
     if (
@@ -75,7 +137,10 @@ app.use((req, res, next) => {
       return res
         .status(403)
         .json({ error: "Cross-site requests are blocked." });
-    if (req.method !== "GET" && req.headers["x-finance-csrf"] !== csrf)
+    if (
+      req.method !== "GET" &&
+      req.headers["x-finance-csrf"] !== (req.desktopAccess?.csrf || csrf)
+    )
       return res
         .status(403)
         .json({ error: "Reload the dashboard and try again." });
@@ -101,6 +166,11 @@ app.get("/api/state", (req, res) => {
     ...data,
     preferences: readPreferences(store),
     desktop: !!desktopAccess,
+    security: {
+      keyProtection: runtime.keyProtection || "local-key-file",
+      access: desktopAccess ? "desktop-session" : "development-browser",
+      bankAccess: "transactions-only",
+    },
     actual: actual
       ? {
           configured: true,
@@ -131,7 +201,9 @@ app.post("/api/desktop/bank-link", (req, res) => {
     return res
       .status(403)
       .json({ error: "Open bank connections from the desktop app." });
-  const itemId = req.body.itemId;
+  const { itemId } = z
+    .object({ itemId: z.string().min(1).max(200).optional() })
+    .parse(req.body);
   if (itemId && !store.get("item", itemId))
     return res.status(404).json({ error: "Connection not found." });
   const ticket = desktopAccess.createTicket(itemId);
@@ -143,7 +215,7 @@ app.get("/api/desktop/link-info", (req, res) => {
       .status(403)
       .json({ error: "Open this page from Finance Goblin." });
   res.json({
-    csrf,
+    csrf: req.desktopAccess.csrf,
     environment: store.get("config", "plaid")?.environment,
     itemId: req.desktopAccess.itemId || null,
   });
@@ -153,15 +225,34 @@ app.post("/api/desktop/link-complete", (req, res) => {
     return res
       .status(403)
       .json({ error: "No active bank connection session." });
+  const finish = desktopAccess.beginOperation(req.headers.cookie, "complete");
+  finish(true);
+  desktopAccess.revokeBrowser(req.headers.cookie);
+  res.clearCookie("fg-desktop", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure,
+    path: "/",
+  });
   desktopEvents.emit("bank-linked");
   res.json({ ok: true });
 });
+function sendHTML(res, path) {
+  res
+    .type("html")
+    .send(
+      readFileSync(path, "utf8").replace(
+        "<head>",
+        `<head><meta name="fg-csp-nonce" content="${res.locals.cspNonce}">`,
+      ),
+    );
+}
 app.get("/desktop-connect", (req, res) =>
-  res.sendFile(join(root, "public/bank-link.html")),
+  sendHTML(res, join(root, "public/bank-link.html")),
 );
 app.get("/oauth/callback", (req, res, next) => {
   if (req.desktopAccess?.kind === "bank")
-    return res.sendFile(join(root, "public/bank-link.html"));
+    return sendHTML(res, join(root, "public/bank-link.html"));
   next();
 });
 app.get("/bank-link.js", (req, res) =>
@@ -183,7 +274,13 @@ const configSchema = z.object({
     .refine((v) => {
       const u = new URL(v);
       return (
+        ["http:", "https:"].includes(u.protocol) &&
+        !u.username &&
+        !u.password &&
+        !u.search &&
+        !u.hash &&
         ["localhost", "127.0.0.1"].includes(u.hostname) &&
+        u.port === String(port) &&
         u.pathname === "/oauth/callback"
       );
     }, "Use this computer’s /oauth/callback URL."),
@@ -192,14 +289,10 @@ app.post(
   "/api/provider/config",
   wrap(async (req, res) => {
     const config = configSchema.parse(req.body);
-    if (
-      !desktopAccess &&
-      config.environment === "production" &&
-      !config.redirectUri.startsWith("https://")
-    )
+    if (!desktopAccess && config.environment === "production")
       return res.status(400).json({
         error:
-          "Production bank OAuth requires HTTPS. Enable local HTTPS before saving production keys; see the setup guide.",
+          "Connect real banks in the Finance Goblin desktop app, which protects your vault key with macOS Keychain. Browser development supports Sandbox only.",
       });
     const old = store.get("config", "plaid");
     if (
@@ -222,13 +315,27 @@ app.post(
 app.post(
   "/api/provider/link",
   wrap(async (req, res) => {
-    const config = store.get("config", "plaid");
-    const item = req.body.itemId ? store.get("item", req.body.itemId) : null;
-    if (req.body.itemId && !item)
-      return res.status(404).json({ error: "Connection not found." });
-    const params = linkTokenParams(config, item, { desktop: !!desktopAccess });
-    const result = await plaid(config, "link/token/create", params);
-    res.json({ linkToken: result.link_token, update: !!item });
+    const { itemId } = z
+      .object({ itemId: z.string().min(1).max(200).nullish() })
+      .parse(req.body);
+    const finish =
+      req.desktopAccess?.kind === "bank"
+        ? desktopAccess.beginOperation(req.headers.cookie, "link", itemId)
+        : () => {};
+    try {
+      const config = store.get("config", "plaid");
+      const item = itemId ? store.get("item", itemId) : null;
+      if (itemId && !item)
+        return res.status(404).json({ error: "Connection not found." });
+      const params = linkTokenParams(config, item, {
+        desktop: !!desktopAccess,
+      });
+      const result = await plaid(config, "link/token/create", params);
+      finish(true);
+      res.json({ linkToken: result.link_token, update: !!item });
+    } finally {
+      finish();
+    }
   }),
 );
 app.post(
@@ -240,24 +347,33 @@ app.post(
         institution: z.string().min(1).max(200),
       })
       .parse(req.body);
-    const config = store.get("config", "plaid");
-    const result = await plaid(config, "item/public_token/exchange", {
-      public_token: publicToken,
-    });
-    const item = {
-      id: result.item_id,
-      accessToken: result.access_token,
-      institution,
-      cursor: "",
-      lastSync: null,
-      error: null,
-    };
-    store.put("item", item.id, item);
+    const finish =
+      req.desktopAccess?.kind === "bank"
+        ? desktopAccess.beginOperation(req.headers.cookie, "exchange")
+        : () => {};
     try {
-      await syncItem(store, item);
-      res.json({ ok: true });
-    } catch (e) {
-      res.json({ ok: true, warning: e.message });
+      const config = store.get("config", "plaid");
+      const result = await plaid(config, "item/public_token/exchange", {
+        public_token: publicToken,
+      });
+      const item = {
+        id: result.item_id,
+        accessToken: result.access_token,
+        institution,
+        cursor: "",
+        lastSync: null,
+        error: null,
+      };
+      store.put("item", item.id, item);
+      finish(true);
+      try {
+        await syncItem(store, item);
+        res.json({ ok: true });
+      } catch (e) {
+        res.json({ ok: true, warning: e.message });
+      }
+    } finally {
+      finish();
     }
   }),
 );
@@ -290,6 +406,38 @@ async function syncAll() {
 app.post(
   "/api/sync",
   wrap(async (req, res) => {
+    if (req.desktopAccess?.kind === "bank") {
+      if (syncing)
+        return res
+          .status(409)
+          .json({ error: "A sync is already running. Try again shortly." });
+      const itemId = req.desktopAccess.itemId;
+      const finish = desktopAccess.beginOperation(
+        req.headers.cookie,
+        "sync",
+        itemId,
+      );
+      syncing = true;
+      try {
+        const item = itemId && store.get("item", itemId);
+        if (!item) throw new AccessError("Connection not found.", 404);
+        try {
+          await syncItem(store, item);
+          res.json({ ok: true });
+        } catch {
+          res.json({
+            ok: true,
+            warning:
+              "Bank reconnected. Refresh your accounts in the app when data is available.",
+          });
+        }
+        finish(true);
+      } finally {
+        finish();
+        syncing = false;
+      }
+      return;
+    }
     if (syncing)
       return res.status(409).json({ error: "A sync is already running." });
     const errors = await syncAll();
@@ -439,11 +587,9 @@ app.post("/api/subscriptions/review", (req, res, next) => {
       transaction.pending ||
       transaction.amount >= 0
     )
-      return res
-        .status(400)
-        .json({
-          error: "Choose a posted expense from your connected activity.",
-        });
+      return res.status(400).json({
+        error: "Choose a posted expense from your connected activity.",
+      });
     const preferences = readPreferences(store);
     preferences.subscriptionReviews = [
       ...preferences.subscriptionReviews.filter(
@@ -478,19 +624,24 @@ if (process.argv.includes("--dev")) {
 } else {
   if (!existsSync(join(root, "dist/index.html")))
     throw new Error("Build the dashboard first: npm run build");
-  app.use(express.static(join(root, "dist"), { etag: false }));
+  app.get("/index.html", (req, res) =>
+    sendHTML(res, join(root, "dist/index.html")),
+  );
+  app.use(express.static(join(root, "dist"), { etag: false, index: false }));
   app.get("/{*path}", (req, res) =>
-    res.sendFile(join(root, "dist/index.html")),
+    sendHTML(res, join(root, "dist/index.html")),
   );
 }
 app.use((err, req, res, next) => {
   res
     .status(
-      err instanceof z.ZodError
-        ? 400
-        : err.type === "entity.too.large"
-          ? 413
-          : 400,
+      err instanceof AccessError
+        ? err.status
+        : err instanceof z.ZodError
+          ? 400
+          : err.type === "entity.too.large"
+            ? 413
+            : 400,
     )
     .json({
       error:
@@ -509,7 +660,9 @@ const server = secure
     )
   : app;
 export const httpServer = server.listen(port, "127.0.0.1", () =>
-  console.log(`Finance Goblin is running at ${origin}`),
+  console.log(
+    `Finance Goblin is running at ${origin}${browserAccess ? "/browser-authorize?ticket=" + browserAccess.ticket : ""}`,
+  ),
 );
 const timer = setInterval(
   () => {

@@ -6,6 +6,7 @@ const {
   shell,
   dialog,
   nativeImage,
+  safeStorage,
 } = require("electron");
 const { randomBytes } = require("node:crypto");
 const { join, resolve } = require("node:path");
@@ -20,7 +21,7 @@ const { pathToFileURL } = require("node:url");
 app.setName("Finance Goblin");
 const isPrimary = app.requestSingleInstanceLock();
 if (!isPrimary) app.quit();
-let window, service, origin;
+let window, service, origin, appSession;
 const root = resolve(__dirname, "..");
 const userData = app.getPath("userData");
 const dataDir = join(userData, "vault");
@@ -37,7 +38,7 @@ function safeExternal(value) {
         url.pathname === "/desktop/bank-authorize" &&
         /^[a-f0-9]{64}$/.test(url.searchParams.get("ticket") || "")
       );
-    return url.protocol === "https:";
+    return url.protocol === "https:" && !url.username && !url.password;
   } catch {
     return false;
   }
@@ -70,6 +71,7 @@ function createWindow() {
     trafficLightPosition: { x: 18, y: 20 },
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
+      partition: "finance-goblin",
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -201,7 +203,17 @@ if (isPrimary)
       const tls = existsSync(join(dataDir, "https.enabled"));
       process.env.PORT = "4310";
       process.env.FINANCE_DATA_DIR = dataDir;
-      process.env.FINANCE_DESKTOP_SESSION = token;
+      const { loadVaultKey } = require("./vault-key.cjs");
+      const vaultKey = await loadVaultKey(dataDir, safeStorage);
+      const { configureRuntime } = await import(
+        pathToFileURL(join(root, "server/runtime.js")).href
+      );
+      configureRuntime({
+        vaultKey,
+        desktopSecret: token,
+        keyProtection: "macos-keychain",
+      });
+      delete process.env.FINANCE_DESKTOP_SESSION;
       if (tls) {
         process.env.LOCAL_TLS_CERT = join(dataDir, "certs/localhost.pem");
         process.env.LOCAL_TLS_KEY = join(dataDir, "certs/localhost-key.pem");
@@ -213,25 +225,24 @@ if (isPrimary)
         service.httpServer.once("listening", resolve);
         service.httpServer.once("error", reject);
       });
-      session.defaultSession.setPermissionRequestHandler(
-        (contents, permission, callback) => callback(false),
+      appSession = session.fromPartition("finance-goblin");
+      appSession.setPermissionRequestHandler((contents, permission, callback) =>
+        callback(false),
       );
-      session.defaultSession.setPermissionCheckHandler(() => false);
-      session.defaultSession.webRequest.onHeadersReceived(
-        (details, callback) => {
-          if (details.url.startsWith(origin + "/"))
-            callback({
-              responseHeaders: {
-                ...details.responseHeaders,
-                "Content-Security-Policy": [
-                  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
-                ],
-              },
-            });
-          else callback({});
-        },
-      );
-      await session.defaultSession.cookies.set({
+      appSession.setPermissionCheckHandler(() => false);
+      appSession.webRequest.onHeadersReceived((details, callback) => {
+        if (details.url.startsWith(origin + "/"))
+          callback({
+            responseHeaders: {
+              ...details.responseHeaders,
+              "Content-Security-Policy": [
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+              ],
+            },
+          });
+        else callback({});
+      });
+      await appSession.cookies.set({
         url: origin,
         name: "fg-desktop",
         value: token,

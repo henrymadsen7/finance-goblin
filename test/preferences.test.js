@@ -222,12 +222,21 @@ test("settings API persists validated colors, widget order and credit-card plans
     }
     rmSync(dir, { recursive: true, force: true });
   });
-  await new Promise((resolve, reject) => {
+  const launchURL = await new Promise((resolve, reject) => {
     child.stdout.on("data", (d) => {
-      if (d.toString().includes("running at")) resolve();
+      const match = d.toString().match(/running at (https?:\/\/\S+)/);
+      if (match) resolve(match[1]);
     });
     child.on("exit", () => reject(Error("Preferences test service failed")));
   });
+  assert.equal((await globalThis.fetch(base + "/api/state")).status, 401);
+  const bootstrap = await globalThis.fetch(launchURL, { redirect: "manual" });
+  const browserCookie = bootstrap.headers.get("set-cookie").split(";")[0];
+  const fetch = (input, init = {}) =>
+    globalThis.fetch(input, {
+      ...init,
+      headers: { Cookie: browserCookie, ...init.headers },
+    });
   const state = await (await fetch(base + "/api/state")).json();
   const next = {
     ...state.preferences,

@@ -11,6 +11,7 @@ coverage/
 *.db
 *.db-*
 *.key
+*.key.os
 *.pem
 *.p12
 *.pfx

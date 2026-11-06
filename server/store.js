@@ -8,26 +8,44 @@ import {
 } from "node:fs";
 import { randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 import { join } from "node:path";
-export function createStore(dir) {
+export function createStore(dir, { key: suppliedKey } = {}) {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   chmodSync(dir, 0o700);
   const keyPath = join(dir, "vault.key");
-  if (!existsSync(keyPath))
-    writeFileSync(keyPath, randomBytes(32), { mode: 0o600, flag: "wx" });
-  chmodSync(keyPath, 0o600);
-  const key = readFileSync(keyPath);
-  function encrypt(value) {
+  if (!suppliedKey) {
+    if (existsSync(join(dir, "vault.key.os")))
+      throw new Error(
+        "Open this protected vault in the Finance Goblin desktop app.",
+      );
+    if (!existsSync(keyPath)) {
+      if (existsSync(join(dir, "finance.sqlite")))
+        throw new Error(
+          "Missing vault key. Restore a matching private backup.",
+        );
+      writeFileSync(keyPath, randomBytes(32), { mode: 0o600, flag: "wx" });
+    }
+    chmodSync(keyPath, 0o600);
+  }
+  const key = suppliedKey || readFileSync(keyPath);
+  if (!Buffer.isBuffer(key) || key.length !== 32)
+    throw new Error("Invalid vault key.");
+  function encrypt(kind, id, value) {
     const iv = randomBytes(12);
     const c = createCipheriv("aes-256-gcm", key, iv);
+    c.setAAD(Buffer.from(JSON.stringify([kind, id])));
     const encrypted = Buffer.concat([
       c.update(JSON.stringify(value), "utf8"),
       c.final(),
     ]);
-    return Buffer.concat([iv, c.getAuthTag(), encrypted]).toString("base64");
+    return (
+      "v2:" + Buffer.concat([iv, c.getAuthTag(), encrypted]).toString("base64")
+    );
   }
-  function decrypt(value) {
-    const b = Buffer.from(value, "base64");
+  function decrypt(kind, id, value) {
+    const versioned = value.startsWith("v2:");
+    const b = Buffer.from(versioned ? value.slice(3) : value, "base64");
     const c = createDecipheriv("aes-256-gcm", key, b.subarray(0, 12));
+    if (versioned) c.setAAD(Buffer.from(JSON.stringify([kind, id])));
     c.setAuthTag(b.subarray(12, 28));
     return JSON.parse(
       Buffer.concat([c.update(b.subarray(28)), c.final()]).toString(),
@@ -42,21 +60,36 @@ export function createStore(dir) {
   const putStmt = db.prepare(
     "INSERT INTO records(kind,id,value) VALUES(?,?,?) ON CONFLICT(kind,id) DO UPDATE SET value=excluded.value",
   );
+  try {
+    db.exec("BEGIN IMMEDIATE");
+    for (const row of db.prepare("SELECT kind,id,value FROM records").all()) {
+      const value = decrypt(row.kind, row.id, row.value);
+      if (!row.value.startsWith("v2:"))
+        putStmt.run(row.kind, row.id, encrypt(row.kind, row.id, value));
+    }
+    db.exec("COMMIT");
+  } catch {
+    db.exec("ROLLBACK");
+    db.close();
+    throw new Error(
+      "Vault authentication failed. Restore a matching private backup; no records were changed.",
+    );
+  }
   const store = {
     put(kind, id, value) {
-      putStmt.run(kind, id, encrypt(value));
+      putStmt.run(kind, id, encrypt(kind, id, value));
     },
     get(kind, id) {
       const r = db
         .prepare("SELECT value FROM records WHERE kind=? AND id=?")
         .get(kind, id);
-      return r ? decrypt(r.value) : null;
+      return r ? decrypt(kind, id, r.value) : null;
     },
     list(kind) {
       return db
-        .prepare("SELECT value FROM records WHERE kind=?")
+        .prepare("SELECT id,value FROM records WHERE kind=?")
         .all(kind)
-        .map((r) => decrypt(r.value));
+        .map((r) => decrypt(kind, r.id, r.value));
     },
     remove(kind, id) {
       db.prepare("DELETE FROM records WHERE kind=? AND id=?").run(kind, id);

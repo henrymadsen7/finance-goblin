@@ -8,7 +8,7 @@ Open **Connections → Settings and imports → Set up Plaid**. Obtain keys in y
 2. For real accounts, enable Production/OAuth access for your account and institution in Plaid. Current Trial-plan and institution rules are provider-controlled; see [Plaid Trial](https://support.plaid.com/hc/en-us/articles/39994173227159-What-is-the-Plaid-Trial-plan) and [OAuth setup](https://plaid.com/docs/link/oauth/). Both Bank of America and American Express use OAuth. Account eligibility and successful linking must be verified with your own accounts.
 3. The desktop app authorizes through your full browser using Plaid’s [web popup OAuth flow](https://plaid.com/docs/link/oauth/#redirect-uris-and-desktop--mobile-web). It does not send a custom redirect URI and requires no localhost certificate or Plaid callback allowlist. Keep the bank authorization page open until linking finishes. Production access and bank consent are still required.
 
-   The optional standalone browser version retains custom redirects. For that version, allowlist `http://localhost:4310/oauth/callback` for Sandbox; Production custom redirects require trusted HTTPS and `https://localhost:4310/oauth/callback`.
+   Browser development is limited to Sandbox. Open the single-use private launch link printed by the server within five minutes. Its optional Sandbox redirect is `http://localhost:4310/oauth/callback`; Production bank connections require the desktop app and its Keychain-protected vault.
 
 4. Choose **Connect a bank**, authorize at your bank, and return to the app. The browser page reports completion and brings the desktop app forward. Reconnect uses Plaid update mode when consent expires. Disconnect revokes the provider Item and removes its local projection.
 
@@ -24,7 +24,7 @@ mkcert -cert-file .local/certs/localhost.pem -key-file .local/certs/localhost-ke
 LOCAL_TLS_CERT="$PWD/.local/certs/localhost.pem" LOCAL_TLS_KEY="$PWD/.local/certs/localhost-key.pem" npm start
 ```
 
-Stop the HTTP server first. Visit **https://localhost:4310**, allowlist `https://localhost:4310/oauth/callback` in Plaid, and enter that redirect URL in the app. Never commit certificate private keys. The browser development version can be started with the TLS environment above.
+Stop the HTTP server first. Open its new private HTTPS launch link, allowlist `https://localhost:4310/oauth/callback` for Plaid Sandbox, and enter that redirect URL in the app. Never commit certificate private keys. The browser development version can be started with the TLS environment above; Production requires the desktop app regardless of TLS.
 
 ### Freshness and synchronization
 
@@ -62,10 +62,10 @@ Dashboard income, expenses, charts, and monthly budgets aggregate **USD only**. 
 
 - Electron, React, fonts, icons, chart code, data, and service run locally. No analytics. The Plaid script loads from its official CDN only when you choose to connect a bank.
 - The server binds to `127.0.0.1`. Host validation, cross-site fetch rejection, CSRF headers on writes, no CORS, frame denial, and no-store responses protect the local API from ordinary website access.
-- The desktop vault is `~/Library/Application Support/Finance Goblin/vault/finance.sqlite`. Record values (including credentials and financial data) use AES-256-GCM. The separate wrapping key is `vault.key` in the same directory; both are owner-only files, and the directory is mode 0700. Record IDs/kinds are not encrypted. The key lives on this computer, not in a hardware keychain. Back up both files securely; losing the key makes the vault unreadable.
-- `.local`, `.env`, node_modules and build outputs are ignored by Git. Never upload the vault or logs to GitHub. No financial payloads or credentials are intentionally logged.
-- The desktop renderer is sandboxed, with context isolation and Node integration disabled. A random per-launch HttpOnly session cookie gates the local API. Browser authorization uses a one-use, 60-second handoff ticket and a separate 30-minute session restricted to bank-link routes; it cannot read your dashboard or edit settings.
-- This is a **single-user app for a trusted macOS login**, not a multi-user service. It does not implement Touch ID or a passcode. Other processes running as your user can read the local wrapping key. Enable FileVault and lock your Mac.
+- The desktop vault is `~/Library/Application Support/Finance Goblin/vault/finance.sqlite`. Record values use AES-256-GCM with record IDs/kinds authenticated as additional data. IDs/kinds are not encrypted. macOS Keychain protects the random key stored wrapped in `vault.key.os`; files are owner-only and the directory is mode 0700. The desktop app verifies and migrates legacy `vault.key` files automatically. Recovery needs matching vault files and the OS Keychain identity, not just a directory copy. See [security and recovery](SECURITY_MODEL.md).
+- `.local`, `.env`, node_modules and build outputs are ignored by Git. Never upload the vault or logs to GitHub. Provider credentials and financial payloads are not intentionally logged. Browser development prints a secret, single-use launch link in the terminal; do not share that output.
+- The desktop renderer is sandboxed, with context isolation and Node integration disabled. A random per-launch HttpOnly cookie in an in-memory Electron session gates the local API. Bank authorization uses a one-use, 60-second handoff ticket and a separate, connection-bound 30-minute session with its own CSRF token. Provider requests are serialized and bounded; completing the flow revokes the browser session and clears its cookie. It cannot read your dashboard, edit settings, reconnect another bank or sync other connections.
+- This is a **single-user app for a trusted macOS login**, not a multi-user service. It does not implement Touch ID or a passcode. Keychain adds protection against direct key-file theft, but malware, privileged access and an unlocked app remain risks. Enable FileVault, update macOS and lock your Mac.
 - Hide amounts is a visual convenience; it does not remove data from browser memory, accessibility in all chart internals, or CSV exports.
 
 ## Architecture and validation

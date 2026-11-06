@@ -21,7 +21,20 @@ export function linkTokenParams(config, item, { desktop = false } = {}) {
       : { products: ["transactions"] }),
   };
 }
+const allowedOperations = new Set([
+  "institutions/get",
+  "link/token/create",
+  "item/public_token/exchange",
+  "transactions/sync",
+  "accounts/get",
+  "item/remove",
+]);
 export async function plaid(config, path, body) {
+  if (!allowedOperations.has(path))
+    throw new ProviderError(
+      "OPERATION_BLOCKED",
+      "This application does not support that bank operation.",
+    );
   if (!config)
     throw new ProviderError(
       "NOT_CONFIGURED",

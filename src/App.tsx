@@ -444,6 +444,9 @@ export default function App() {
       await new Promise<void>((resolve, reject) => {
         const s = document.createElement("script");
         s.src = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
+        s.nonce =
+          document.querySelector<HTMLMetaElement>('meta[name="fg-csp-nonce"]')
+            ?.content || "";
         s.onload = () => resolve();
         s.onerror = () =>
           reject(
@@ -1700,6 +1703,15 @@ export default function App() {
                   </div>
                 )}
               </div>
+              <button
+                className="text-button"
+                onClick={() => setModal("privacy")}
+              >
+                <ShieldCheck size={15} />
+                {state.security?.keyProtection === "macos-keychain"
+                  ? "Keychain-protected vault · Access details"
+                  : "Connection security and privacy"}
+              </button>
               <details className="connection-options">
                 <summary>Settings and imports</summary>
                 <div className="connection-grid">
@@ -1865,8 +1877,10 @@ export default function App() {
             <h2>Privacy</h2>
             <p>
               The app listens only on this Mac’s loopback interface. Financial
-              records and API credentials are encrypted in a local SQLite vault,
-              with a separate owner-only key file.
+              records and API credentials are encrypted in a local SQLite vault.
+              {state.security?.keyProtection === "macos-keychain"
+                ? " macOS Keychain protects the vault’s encryption key."
+                : " This development workspace uses a local key file; use the desktop app for Keychain protection."}
             </p>
             <p>
               Plaid handles bank authorization and retrieves bank data with your
@@ -1876,9 +1890,10 @@ export default function App() {
             </p>
             <p>
               This is a single-user workspace for a trusted macOS login. It does
-              not provide the native Surf app’s biometric lock. Other processes
-              running as your macOS user can access local data; enable FileVault
-              and lock your Mac when away.
+              not provide a passcode or biometric lock. Malware, an unlocked
+              computer, compromised providers, and malicious builds remain
+              risks. Enable FileVault, keep macOS updated, and lock your Mac
+              when away.
             </p>
             <button className="primary full" onClick={() => setModal(null)}>
               Got it <Check size={16} />
@@ -1966,8 +1981,8 @@ export default function App() {
                   <div className="form-note">
                     <Info size={16} />
                     <span>
-                      Allowlist this exact URL in Plaid. Production redirects
-                      require HTTPS.
+                      Allowlist this exact URL for Plaid Sandbox. Connect real
+                      banks through the desktop app.
                     </span>
                   </div>
                 </>

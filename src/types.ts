@@ -31,6 +31,11 @@ declare global {
 export type State = {
   preferences?: import("../shared/preferences.js").Preferences;
   desktop?: boolean;
+  security?: {
+    keyProtection: "macos-keychain" | "local-key-file";
+    access: "desktop-session" | "development-browser";
+    bankAccess: "transactions-only";
+  };
   accounts: Account[];
   transactions: Transaction[];
   budgets: Record<string, number>;

@@ -64,3 +64,74 @@ test("desktop OAuth omits custom redirects for new and reconnect flows while bro
     } else assert.deepEqual(desktop.products, ["transactions"]);
   }
 });
+
+test("bank sessions bind their connection and CSRF, serialize calls and reject replay", () => {
+  const access = createDesktopAccess("desktop-secret");
+  const browser = access.redeemTicket(access.createTicket("item-1"));
+  const cookie = `fg-desktop=${browser}`;
+  assert.equal(access.authorize(cookie, "/api/provider/link", "GET"), null);
+  assert.throws(() => access.beginOperation(cookie, "complete"), /authorizing/);
+  assert.throws(
+    () => access.beginOperation(cookie, "link", "item-2"),
+    /different bank/,
+  );
+  assert.throws(() => access.beginOperation(cookie, "sync", "item-1"), /Start/);
+  const finish = access.beginOperation(cookie, "link", "item-1");
+  assert.throws(
+    () => access.beginOperation(cookie, "link", "item-1"),
+    /already running/,
+  );
+  finish(true);
+  finish(false);
+  assert.throws(
+    () => access.beginOperation(cookie, "exchange"),
+    /different bank|not permitted/,
+  );
+  access.beginOperation(cookie, "sync", "item-1")(true);
+  assert.throws(
+    () => access.beginOperation(cookie, "sync", "item-1"),
+    /already complete/,
+  );
+  access.beginOperation(cookie, "complete")(true);
+  access.revokeBrowser(cookie);
+  assert.equal(access.authorize(cookie, "/api/desktop/link-info"), null);
+  const newCookie = `fg-desktop=${access.redeemTicket(access.createTicket())}`;
+  assert.throws(
+    () => access.beginOperation(newCookie, "sync"),
+    /not permitted/,
+  );
+  for (let i = 0; i < 12; i++) access.beginOperation(newCookie, "link")();
+  assert.throws(
+    () => access.beginOperation(newCookie, "link"),
+    (e) => e.status === 429,
+  );
+});
+
+test("browser development uses an expiring one-use bootstrap and private session", async () => {
+  const { createBrowserAccess } = await import("../server/desktop-access.js");
+  let time = 0;
+  const access = createBrowserAccess({ now: () => time });
+  assert.equal(access.authorize(), false);
+  assert.equal(access.redeem("wrong"), null);
+  const token = access.redeem(access.ticket);
+  assert.equal(access.redeem(access.ticket), null);
+  assert.equal(access.authorize(`other=x; fg-browser=${token}`), true);
+  assert.equal(access.authorize(`fg-browser=${token}x`), false);
+  const expired = createBrowserAccess({ now: () => time });
+  time += 5 * 60_000;
+  assert.equal(expired.redeem(expired.ticket), null);
+});
+
+test("provider transport rejects payment and arbitrary endpoints before sending credentials", async () => {
+  const { plaid } = await import("../server/plaid.js");
+  for (const path of [
+    "transfer/create",
+    "payment_initiation/payment/create",
+    "https://other.example/",
+    "../accounts/get",
+  ])
+    await assert.rejects(
+      plaid({}, path, {}),
+      (error) => error.code === "OPERATION_BLOCKED",
+    );
+});
