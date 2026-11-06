@@ -24,7 +24,7 @@ The desktop app gates the loopback service with a random per-launch HttpOnly coo
 
 It provides no biometric or cross-user authentication layer. Host validation, CSP and CSRF protect against ordinary hostile websites. Browser development also requires a five-minute single-use launch link and per-launch private cookie, and supports Plaid Sandbox only. No server is exposed to other computers. A compromised OS, malicious app/dependency or an unlocked desktop remains outside the protection these boundaries provide.
 
-`desktop/vault-key.cjs` wraps the random 32-byte AES key using Electron’s asynchronous safeStorage API and macOS Keychain. Atomic writes and decryption round trips precede legacy-key removal; unavailable or inconsistent key material fails closed. `server/runtime.js` passes the unwrapped key and desktop session secret in process memory, never through environment variables or renderer IPC. AES-GCM v2 ciphertext authenticates record kind and ID; legacy records migrate transactionally. See [security model](SECURITY_MODEL.md).
+`desktop/vault-key.cjs` wraps the random 32-byte AES key using Electron’s asynchronous safeStorage API and macOS Keychain. A verified, atomically written OS-protected recovery envelope holds old/new keys while one database transaction rotates every record. Only after commit is the old key retired; interruptions resume from the recovery envelope. Unavailable or inconsistent key material fails closed. `server/runtime.js` passes the unwrapped key and desktop session secret in process memory, never through environment variables or renderer IPC. AES-GCM v2 ciphertext authenticates record kind and ID; legacy records migrate transactionally. See [security model](SECURITY_MODEL.md).
 
 ## Consistency
 

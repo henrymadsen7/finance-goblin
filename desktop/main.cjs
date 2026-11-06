@@ -204,12 +204,13 @@ if (isPrimary)
       process.env.PORT = "4310";
       process.env.FINANCE_DATA_DIR = dataDir;
       const { loadVaultKey } = require("./vault-key.cjs");
-      const vaultKey = await loadVaultKey(dataDir, safeStorage);
+      const vaultKeys = await loadVaultKey(dataDir, safeStorage);
       const { configureRuntime } = await import(
         pathToFileURL(join(root, "server/runtime.js")).href
       );
       configureRuntime({
-        vaultKey,
+        vaultKey: vaultKeys.key,
+        previousVaultKey: vaultKeys.previousKey,
         desktopSecret: token,
         keyProtection: "macos-keychain",
       });
@@ -225,6 +226,7 @@ if (isPrimary)
         service.httpServer.once("listening", resolve);
         service.httpServer.once("error", reject);
       });
+      await vaultKeys.finalize();
       appSession = session.fromPartition("finance-goblin");
       appSession.setPermissionRequestHandler((contents, permission, callback) =>
         callback(false),

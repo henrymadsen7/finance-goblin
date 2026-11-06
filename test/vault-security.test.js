@@ -38,12 +38,18 @@ test("Keychain migration preserves every record and removes the legacy key only 
   store.put("preferences", "dashboard", { profileName: "Test" });
   store.close();
   const original = readFileSync(join(dir, "vault.key"));
-  const key = await loadVaultKey(dir, keychain(), "darwin");
-  assert.deepEqual(key, original);
-  assert.equal(existsSync(join(dir, "vault.key")), false);
+  const keys = await loadVaultKey(dir, keychain(), "darwin");
+  assert.notDeepEqual(keys.key, original);
+  assert.deepEqual(keys.previousKey, original);
+  assert.equal(existsSync(join(dir, "vault.key")), true);
   assert.equal(statSync(join(dir, "vault.key.os")).mode & 0o777, 0o600);
-  assert.deepEqual(await loadVaultKey(dir, keychain(), "darwin"), key);
-  store = createStore(dir, { key });
+  store = createStore(dir, keys);
+  await keys.finalize();
+  assert.equal(existsSync(join(dir, "vault.key")), false);
+  assert.deepEqual(
+    (await loadVaultKey(dir, keychain(), "darwin")).key,
+    keys.key,
+  );
   assert.equal(store.get("config", "plaid").secret, "synthetic-private-value");
   assert.equal(store.get("preferences", "dashboard").profileName, "Test");
   store.close();
@@ -83,9 +89,10 @@ test("unavailable or corrupt Keychain never falls back or replaces an existing k
 });
 test("new protected vaults never create plaintext keys; lost keys fail closed", async (t) => {
   const dir = temporary(t),
-    key = await loadVaultKey(dir, keychain(), "darwin");
+    keys = await loadVaultKey(dir, keychain(), "darwin");
   assert.equal(existsSync(join(dir, "vault.key")), false);
-  const store = createStore(dir, { key });
+  const store = createStore(dir, keys);
+  await keys.finalize();
   store.put("item", "a", { id: "a" });
   store.close();
   unlinkSync(join(dir, "vault.key.os"));
@@ -132,4 +139,97 @@ test("legacy ciphertext upgrades atomically and record substitution fails authen
   store = createStore(dir);
   assert.equal(store.get("account", "a").amount, 100);
   store.close();
+});
+
+test("rotation recovers interruptions before and after the database commit and retires old key copies", async (t) => {
+  const dir = temporary(t);
+  let store = createStore(dir);
+  store.put("item", "a", { id: "a", accessToken: "synthetic-token" });
+  store.close();
+  const oldCopy = readFileSync(join(dir, "vault.key"));
+  const beforeDB = new DatabaseSync(join(dir, "finance.sqlite"), {
+    readOnly: true,
+  });
+  const oldCiphertext = beforeDB
+    .prepare("SELECT value FROM records LIMIT 1")
+    .get().value;
+  beforeDB.close();
+  await loadVaultKey(dir, keychain(), "darwin"); // crash after envelope write
+  const recovering = await loadVaultKey(dir, keychain(), "darwin");
+  assert.deepEqual(recovering.previousKey, oldCopy);
+  store = createStore(dir, recovering);
+  assert.equal(store.get("item", "a").accessToken, "synthetic-token");
+  store.close();
+  // crash after DB commit but before retiring the recovery key
+  const afterCommit = await loadVaultKey(dir, keychain(), "darwin");
+  store = createStore(dir, afterCommit);
+  assert.equal(store.get("item", "a").accessToken, "synthetic-token");
+  store.close();
+  await afterCommit.finalize();
+  const complete = await loadVaultKey(dir, keychain(), "darwin");
+  assert.equal(complete.previousKey, undefined);
+  assert.equal(existsSync(join(dir, "vault.key")), false);
+  assert.equal(
+    readFileSync(join(dir, "finance.sqlite")).includes(
+      Buffer.from(oldCiphertext),
+    ),
+    false,
+  );
+  assert.throws(
+    () => createStore(dir, { key: oldCopy }),
+    /authentication failed/,
+  );
+  store = createStore(dir, complete);
+  assert.equal(store.get("item", "a").accessToken, "synthetic-token");
+  store.close();
+});
+
+test("early OS-wrapped keys rotate and finalized desktop vaults reject unbound legacy ciphertext", async (t) => {
+  const dir = temporary(t);
+  let store = createStore(dir);
+  store.put("preferences", "dashboard", { profileName: "Test" });
+  store.close();
+  const oldKey = readFileSync(join(dir, "vault.key"));
+  writeFileSync(
+    join(dir, "vault.key.os"),
+    await keychain().encryptStringAsync(oldKey.toString("hex")),
+  );
+  const keys = await loadVaultKey(dir, keychain(), "darwin");
+  assert.notDeepEqual(keys.key, oldKey);
+  store = createStore(dir, keys);
+  store.close();
+  await keys.finalize();
+  const iv = randomBytes(12),
+    cipher = createCipheriv("aes-256-gcm", keys.key, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(JSON.stringify({ profileName: "Unbound" })),
+    cipher.final(),
+  ]);
+  const db = new DatabaseSync(join(dir, "finance.sqlite"));
+  db.prepare("UPDATE records SET value=?").run(
+    Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64"),
+  );
+  db.close();
+  assert.throws(
+    () => createStore(dir, { key: keys.key }),
+    /authentication failed/,
+  );
+});
+
+test("failed record authentication preserves the recovery envelope and original key", async (t) => {
+  const dir = temporary(t);
+  const store = createStore(dir);
+  store.put("account", "a", { id: "a" });
+  store.close();
+  const original = readFileSync(join(dir, "vault.key"));
+  const db = new DatabaseSync(join(dir, "finance.sqlite"));
+  db.prepare("UPDATE records SET value='invalid'").run();
+  db.close();
+  const keys = await loadVaultKey(dir, keychain(), "darwin");
+  assert.throws(() => createStore(dir, keys), /authentication failed/);
+  assert.deepEqual(readFileSync(join(dir, "vault.key")), original);
+  assert.deepEqual(
+    (await loadVaultKey(dir, keychain(), "darwin")).previousKey,
+    original,
+  );
 });

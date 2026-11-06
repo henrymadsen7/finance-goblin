@@ -29,7 +29,7 @@ const origin = `${secure ? "https" : "http"}://localhost:${port}`;
 const runtime = runtimeSettings();
 const store = createStore(
   process.env.FINANCE_DATA_DIR || join(root, ".local"),
-  { key: runtime.vaultKey },
+  { key: runtime.vaultKey, previousKey: runtime.previousVaultKey },
 );
 migratePlaidCategories(store);
 const csrf = randomBytes(32).toString("hex");

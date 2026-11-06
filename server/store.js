@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 import { join } from "node:path";
-export function createStore(dir, { key: suppliedKey } = {}) {
+export function createStore(dir, { key: suppliedKey, previousKey } = {}) {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   chmodSync(dir, 0o700);
   const keyPath = join(dir, "vault.key");
@@ -41,21 +41,35 @@ export function createStore(dir, { key: suppliedKey } = {}) {
       "v2:" + Buffer.concat([iv, c.getAuthTag(), encrypted]).toString("base64")
     );
   }
-  function decrypt(kind, id, value) {
+  let recoveryKey = previousKey;
+  let allowLegacy = !suppliedKey || !!previousKey;
+  function decryptWithKey(kind, id, value, candidateKey) {
     const versioned = value.startsWith("v2:");
+    if (!versioned && !allowLegacy)
+      throw new Error(
+        "Unbound legacy ciphertext is not permitted in this vault.",
+      );
     const b = Buffer.from(versioned ? value.slice(3) : value, "base64");
-    const c = createDecipheriv("aes-256-gcm", key, b.subarray(0, 12));
+    const c = createDecipheriv("aes-256-gcm", candidateKey, b.subarray(0, 12));
     if (versioned) c.setAAD(Buffer.from(JSON.stringify([kind, id])));
     c.setAuthTag(b.subarray(12, 28));
     return JSON.parse(
       Buffer.concat([c.update(b.subarray(28)), c.final()]).toString(),
     );
   }
+  function decrypt(kind, id, value) {
+    try {
+      return decryptWithKey(kind, id, value, key);
+    } catch (error) {
+      if (!recoveryKey) throw error;
+      return decryptWithKey(kind, id, value, recoveryKey);
+    }
+  }
   const path = join(dir, "finance.sqlite");
   const db = new DatabaseSync(path);
   chmodSync(path, 0o600);
   db.exec(
-    "PRAGMA journal_mode=DELETE; CREATE TABLE IF NOT EXISTS records (kind TEXT NOT NULL,id TEXT NOT NULL,value TEXT NOT NULL,PRIMARY KEY(kind,id));",
+    "PRAGMA journal_mode=DELETE; PRAGMA secure_delete=ON; CREATE TABLE IF NOT EXISTS records (kind TEXT NOT NULL,id TEXT NOT NULL,value TEXT NOT NULL,PRIMARY KEY(kind,id));",
   );
   const putStmt = db.prepare(
     "INSERT INTO records(kind,id,value) VALUES(?,?,?) ON CONFLICT(kind,id) DO UPDATE SET value=excluded.value",
@@ -64,16 +78,28 @@ export function createStore(dir, { key: suppliedKey } = {}) {
     db.exec("BEGIN IMMEDIATE");
     for (const row of db.prepare("SELECT kind,id,value FROM records").all()) {
       const value = decrypt(row.kind, row.id, row.value);
-      if (!row.value.startsWith("v2:"))
+      if (previousKey || !row.value.startsWith("v2:"))
         putStmt.run(row.kind, row.id, encrypt(row.kind, row.id, value));
     }
     db.exec("COMMIT");
+    recoveryKey = undefined;
+    allowLegacy = false;
   } catch {
     db.exec("ROLLBACK");
     db.close();
     throw new Error(
       "Vault authentication failed. Restore a matching private backup; no records were changed.",
     );
+  }
+  if (previousKey) {
+    try {
+      db.exec("VACUUM");
+    } catch {
+      db.close();
+      throw new Error(
+        "Vault rotation committed but cleanup could not finish. Reopen the app to resume using the protected recovery envelope.",
+      );
+    }
   }
   const store = {
     put(kind, id, value) {

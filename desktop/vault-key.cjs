@@ -12,8 +12,8 @@ const {
   chmodSync,
 } = require("node:fs");
 
-// No plaintext fallback: a locked/unavailable Keychain must never create a new
-// identity for an existing vault. Keep legacy keys until round-trip verification.
+// A verified OS-protected recovery envelope precedes database re-keying. Keep
+// both keys until the database transaction commits, then retire the old key.
 async function loadVaultKey(dir, safeStorage, platform = process.platform) {
   if (platform !== "darwin")
     throw new Error(
@@ -26,18 +26,16 @@ async function loadVaultKey(dir, safeStorage, platform = process.platform) {
   const protectedPath = join(dir, "vault.key.os"),
     legacyPath = join(dir, "vault.key");
   const decode = (text) => {
-    if (!/^[a-f0-9]{64}$/.test(text))
+    if (typeof text !== "string" || !/^[a-f0-9]{64}$/.test(text))
       throw new Error(
         "Invalid protected vault key. Restore your private backup; do not delete the vault.",
       );
     return Buffer.from(text, "hex");
   };
-  async function persist(key) {
-    const encrypted = await safeStorage.encryptStringAsync(key.toString("hex"));
-    const check = decode(
-      (await safeStorage.decryptStringAsync(encrypted)).result,
-    );
-    if (!timingSafeEqual(key, check))
+  async function persist(envelope) {
+    const plaintext = JSON.stringify(envelope);
+    const encrypted = await safeStorage.encryptStringAsync(plaintext);
+    if ((await safeStorage.decryptStringAsync(encrypted)).result !== plaintext)
       throw new Error(
         "Keychain verification failed. Your existing vault key was preserved.",
       );
@@ -58,45 +56,82 @@ async function loadVaultKey(dir, safeStorage, platform = process.platform) {
       } finally {
         closeSync(directory);
       }
-      const saved = decode(
+      if (
         (await safeStorage.decryptStringAsync(readFileSync(protectedPath)))
-          .result,
-      );
-      if (!timingSafeEqual(key, saved))
+          .result !== plaintext
+      )
         throw new Error("Protected vault key verification failed.");
     } finally {
       if (existsSync(temporary)) unlinkSync(temporary);
     }
   }
-  let key;
+  let envelope,
+    oldKey,
+    rotateProvider = false;
   if (existsSync(protectedPath)) {
     chmodSync(protectedPath, 0o600);
     const decrypted = await safeStorage.decryptStringAsync(
       readFileSync(protectedPath),
     );
-    key = decode(decrypted.result);
-    if (decrypted.shouldReEncrypt) await persist(key);
+    rotateProvider = decrypted.shouldReEncrypt;
+    if (/^[a-f0-9]{64}$/.test(decrypted.result))
+      oldKey = decode(decrypted.result);
+    else {
+      try {
+        envelope = JSON.parse(decrypted.result);
+      } catch {
+        throw new Error(
+          "Invalid protected vault key envelope. Restore a matching private backup.",
+        );
+      }
+      if (envelope?.version !== 2)
+        throw new Error("Unsupported protected vault key format.");
+      decode(envelope.key);
+      if (envelope.previousKey !== undefined) decode(envelope.previousKey);
+    }
+  } else if (existsSync(legacyPath)) {
+    oldKey = readFileSync(legacyPath);
+    if (oldKey.length !== 32)
+      throw new Error("Invalid vault key. Your original file was preserved.");
+  } else if (existsSync(join(dir, "finance.sqlite"))) {
+    throw new Error(
+      "This vault is missing its key. Restore a matching private backup; do not create a replacement key.",
+    );
+  }
+  if (!envelope) {
+    envelope = {
+      version: 2,
+      key: randomBytes(32).toString("hex"),
+      ...(oldKey ? { previousKey: oldKey.toString("hex") } : {}),
+    };
+    await persist(envelope);
+  } else if (rotateProvider) await persist(envelope);
+  const key = decode(envelope.key),
+    previousKey = envelope.previousKey
+      ? decode(envelope.previousKey)
+      : undefined;
+  if (existsSync(legacyPath)) {
+    const legacy = readFileSync(legacyPath);
     if (
-      existsSync(legacyPath) &&
-      !timingSafeEqual(key, readFileSync(legacyPath))
+      legacy.length !== 32 ||
+      ![key, previousKey]
+        .filter(Boolean)
+        .some((k) => timingSafeEqual(k, legacy))
     )
       throw new Error(
         "Conflicting vault keys. Restore a matching private backup; neither key was deleted.",
       );
-  } else {
-    if (existsSync(legacyPath)) key = readFileSync(legacyPath);
-    else {
-      if (existsSync(join(dir, "finance.sqlite")))
-        throw new Error(
-          "This vault is missing its key. Restore a matching private backup; do not create a replacement key.",
-        );
-      key = randomBytes(32);
-    }
-    if (key.length !== 32)
-      throw new Error("Invalid vault key. Your original file was preserved.");
-    await persist(key);
   }
-  if (existsSync(legacyPath)) unlinkSync(legacyPath);
-  return key;
+  return {
+    key,
+    previousKey,
+    // Call ONLY after opening/authenticating/re-keying every database record in
+    // one committed transaction. Before this, the envelope permits crash recovery.
+    async finalize() {
+      if (previousKey) await persist({ version: 2, key: key.toString("hex") });
+      if (existsSync(legacyPath)) unlinkSync(legacyPath);
+      previousKey?.fill(0);
+    },
+  };
 }
 module.exports = { loadVaultKey };
