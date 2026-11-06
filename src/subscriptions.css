@@ -1,0 +1,417 @@
+.activity-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  width: fit-content;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  border-radius: 13px;
+  margin: 0 0 22px;
+}
+.activity-tabs button {
+  padding: 10px 18px;
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.activity-tabs button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+  color: var(--text);
+}
+.subscriptions-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 22px;
+}
+.subscriptions-heading h2 {
+  font-size: 23px;
+  margin: 0 0 7px;
+  letter-spacing: -0.6px;
+}
+.subscriptions-heading p,
+.subscription-estimate-note,
+.subscription-method {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.subscriptions-heading .subtle-chip {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.subscriptions-toolbar {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.subscriptions-toolbar select {
+  width: auto;
+  max-width: 220px;
+  font-size: 11px;
+  min-height: 39px;
+}
+.app .subscription-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 180px;
+  flex: 1;
+}
+.app .subscription-search input {
+  border: 0;
+  background: transparent;
+  padding: 10px 0;
+  width: 100%;
+  font-size: 12px;
+}
+.subscription-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.subscription-kpis .panel {
+  text-align: left;
+  padding: 21px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.subscription-review-kpi:hover {
+  border-color: var(--accent);
+}
+.subscription-company-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 17px;
+  align-items: start;
+}
+.subscription-company-groups .subscription-grid {
+  grid-template-columns: 1fr;
+}
+.subscription-kpis span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.subscription-kpis strong {
+  font-size: 27px;
+  letter-spacing: -1px;
+  font-family: Manrope, sans-serif;
+}
+.subscription-estimate-note {
+  margin: 13px 2px 22px;
+}
+.subscription-category-chart {
+  margin-bottom: 22px;
+}
+.subscription-category-chart > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  padding: 0 22px 22px;
+}
+.subscription-category-chart button {
+  position: relative;
+  text-align: left;
+  min-width: 0;
+}
+.subscription-category-chart small {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  padding: 12px 14px;
+  min-width: 205px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px #0004;
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1.6;
+  visibility: hidden;
+  z-index: 5;
+  pointer-events: none;
+}
+.subscription-category-chart button:hover small,
+.subscription-category-chart button:focus-visible small {
+  visibility: visible;
+}
+.subscription-category-chart button > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+}
+.subscription-category-chart button > i {
+  display: block;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  height: 5px;
+  border-radius: 3px;
+  margin-top: 11px;
+  overflow: hidden;
+}
+.subscription-category-chart b {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.subscription-group-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 20px;
+  gap: 12px;
+}
+.subscription-group-controls > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.subscription-group > h3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  margin: 22px 0 12px;
+}
+.subscription-group > h3 > span {
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--muted);
+}
+.subscription-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+}
+.subscription-card {
+  padding: 22px;
+}
+.subscription-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.subscription-company {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  min-width: 0;
+}
+.subscription-company h3 {
+  margin: 0 0 5px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.subscription-company span:not(.subscription-initial) {
+  font-size: 10px;
+  color: var(--muted);
+}
+.subscription-initial {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-size: 17px;
+}
+.subscription-card-head .subtle-chip {
+  font-size: 9px;
+  white-space: nowrap;
+}
+.subscription-price {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 22px 0 14px;
+}
+.subscription-price > strong {
+  font:
+    600 28px Manrope,
+    sans-serif;
+  letter-spacing: -1px;
+}
+.subscription-price > span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.subscription-price .subscription-category {
+  margin-left: auto;
+}
+.subscription-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 15px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.subscription-caution {
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.subscription-links,
+.subscription-review {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+.subscription-links {
+  margin: 20px 0 15px;
+}
+.subscription-links .button {
+  font-size: 11px;
+  padding: 8px 12px;
+}
+.subscription-links > .muted {
+  font-size: 11px;
+}
+.subscription-review {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.subscription-review .text-button {
+  font-size: 10px;
+}
+.subscription-details {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 13px;
+}
+.subscription-details summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.subscription-history {
+  overflow-x: auto;
+  margin-top: 13px;
+}
+.subscription-history table {
+  width: 100%;
+  font-size: 10px;
+  border-collapse: collapse;
+}
+.subscription-history th,
+.subscription-history td {
+  padding: 9px 7px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.subscription-history th {
+  font-size: 9px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.subscription-history td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+.subscription-history td:nth-child(2) {
+  overflow-wrap: anywhere;
+}
+.app .subscription-editor {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 13px;
+  align-items: end;
+  margin-top: 18px;
+}
+.app .subscription-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--muted);
+  min-width: 0;
+}
+.app .subscription-editor input {
+  width: 100%;
+  font-size: 11px;
+}
+.subscription-editor .button {
+  justify-self: start;
+  font-size: 11px;
+}
+.subscription-error {
+  color: var(--red);
+  font-size: 11px;
+  margin: 12px 0 0;
+}
+.subscription-empty {
+  text-align: center;
+  padding: 45px 25px;
+  color: var(--muted);
+}
+.subscription-empty h3 {
+  color: var(--text);
+  margin: 15px 0 8px;
+}
+.subscription-empty p {
+  font-size: 12px;
+  max-width: 550px;
+  margin: 0 auto 20px;
+  line-height: 1.8;
+}
+.subscription-method {
+  margin-top: 28px;
+}
+.subscription-method summary {
+  cursor: pointer;
+}
+@media (max-width: 1100px) {
+  .subscription-company-groups {
+    grid-template-columns: 1fr;
+  }
+  .subscription-grid {
+    grid-template-columns: 1fr;
+  }
+  .subscription-kpis strong {
+    font-size: 22px;
+  }
+  .subscription-kpis .panel {
+    padding: 16px;
+  }
+}
+@media (max-width: 760px) {
+  .subscription-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .subscription-category-chart > div:last-child {
+    grid-template-columns: 1fr;
+  }
+  .subscriptions-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .subscription-card {
+    padding: 17px;
+  }
+  .subscription-card-head {
+    flex-wrap: wrap;
+  }
+  .app .subscription-editor {
+    grid-template-columns: 1fr;
+  }
+  .subscriptions-toolbar select {
+    max-width: 100%;
+    flex: 1;
+  }
+}

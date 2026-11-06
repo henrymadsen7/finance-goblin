@@ -34,7 +34,14 @@ export type Preferences = {
   appearance: Appearance;
   widgets: WidgetId[];
   payments: PaymentRule[];
+  subscriptionReviews: SubscriptionReview[];
   timeZone: string;
+};
+export type SubscriptionReview = {
+  transactionId: string;
+  decision: "auto" | "confirmed" | "dismissed";
+  category?: string;
+  billingUrl?: string;
 };
 export const widgetCatalog: [WidgetId, string][];
 export const defaultAppearance: Appearance;

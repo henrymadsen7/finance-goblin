@@ -46,11 +46,13 @@ import { Settings } from "./Settings";
 import { Payments } from "./Payments";
 import { DailyChart } from "./DailyChart";
 import { CategorySpend } from "./CategorySpend";
+import { Subscriptions } from "./Subscriptions";
 import { defaultPreferences } from "../shared/preferences.js";
 import type {
   Preferences,
   PaymentRule,
   WidgetId,
+  SubscriptionReview,
 } from "../shared/preferences.js";
 import { GlassChrome } from "./Glass";
 import { selectAccounts, selectTransactions, accountSummary } from "./finance";
@@ -120,6 +122,10 @@ export default function App() {
     [kind, setKind] = useState("all"),
     [dim, setDim] = useState("3D"),
     [category, setCategory] = useState("all");
+  const [activityView, setActivityView] = useState("transactions"),
+    [demoSubscriptionReviews, setDemoSubscriptionReviews] = useState<
+      SubscriptionReview[]
+    >([]);
   const [previewPreferences, setPreviewPreferences] =
     useState<Preferences | null>(null);
   const preferences =
@@ -313,6 +319,7 @@ export default function App() {
     setCategory("all");
   };
   const exploreAccount = (id: string, institution: string) => {
+    setActivityView("transactions");
     setBank(institution);
     setAccount(id);
     go("Activity");
@@ -628,6 +635,7 @@ export default function App() {
             className="text-button"
             onClick={() => {
               setPage("Activity");
+              setActivityView("transactions");
               setMobile(false);
             }}
           >
@@ -761,6 +769,26 @@ export default function App() {
     setState((current) =>
       current ? { ...current, preferences: result.preferences } : current,
     );
+  };
+  const saveSubscriptionReview = async (review: SubscriptionReview) => {
+    if (mode === "demo") {
+      setDemoSubscriptionReviews((current) => [
+        ...current.filter((r) => r.transactionId !== review.transactionId),
+        review,
+      ]);
+      notify("Sample subscription updated. Your real accounts are unchanged.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await api("subscriptions/review", review);
+      setState((current) =>
+        current ? { ...current, preferences: result.preferences } : current,
+      );
+      notify("Subscription review saved.");
+    } finally {
+      setBusy(false);
+    }
   };
   const savePayment = async (rule: PaymentRule) => {
     if (mode !== "live") {
@@ -1194,68 +1222,89 @@ export default function App() {
               </button>
             </div>
           )}
-          {!["Connections", "Accounts", "Budgets", "Payments"].includes(
-            page,
-          ) && (
-            <div className="filterbar">
-              <div className="periods">
-                <GlassChrome radius={13} />
-                {[
-                  ["7", "7 days"],
-                  ["30", "30 days"],
-                  ["90", "90 days"],
-                  ["month", "This month"],
-                ].map(([id, label]) => (
-                  <button
-                    aria-pressed={period === id}
-                    className={period === id ? "active" : ""}
-                    onClick={() => {
-                      setPeriod(id);
-                      setSelected(null);
-                    }}
-                    key={id}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="filter-right">
-                <span className="date-range">
-                  <CalendarDays size={14} />
-                  {dateLabel(start)} – {dateLabel(end)},{" "}
-                  {new Date().getFullYear()}
-                </span>
-                <select
-                  aria-label="Filter account"
-                  value={account}
-                  onChange={(e) => {
-                    setAccount(e.target.value);
-                    setSelected(null);
-                  }}
-                >
-                  <option value="all">All accounts</option>
-                  {bankAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                      {a.mask ? ` · ${a.mask}` : ""}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label="Filter category"
-                  value={category}
-                  onChange={(e) => chooseCategory(e.target.value)}
-                >
-                  <option value="all">All categories</option>
-                  {categoryNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {page === "Activity" && (
+            <div
+              className="activity-tabs"
+              role="group"
+              aria-label="Activity views"
+            >
+              <button
+                aria-pressed={activityView === "transactions"}
+                onClick={() => setActivityView("transactions")}
+              >
+                All activity
+              </button>
+              <button
+                aria-pressed={activityView === "subscriptions"}
+                onClick={() => setActivityView("subscriptions")}
+              >
+                Subscriptions
+              </button>
             </div>
           )}
+          {!(page === "Activity" && activityView === "subscriptions") &&
+            !["Connections", "Accounts", "Budgets", "Payments"].includes(
+              page,
+            ) && (
+              <div className="filterbar">
+                <div className="periods">
+                  <GlassChrome radius={13} />
+                  {[
+                    ["7", "7 days"],
+                    ["30", "30 days"],
+                    ["90", "90 days"],
+                    ["month", "This month"],
+                  ].map(([id, label]) => (
+                    <button
+                      aria-pressed={period === id}
+                      className={period === id ? "active" : ""}
+                      onClick={() => {
+                        setPeriod(id);
+                        setSelected(null);
+                      }}
+                      key={id}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="filter-right">
+                  <span className="date-range">
+                    <CalendarDays size={14} />
+                    {dateLabel(start)} – {dateLabel(end)},{" "}
+                    {new Date().getFullYear()}
+                  </span>
+                  <select
+                    aria-label="Filter account"
+                    value={account}
+                    onChange={(e) => {
+                      setAccount(e.target.value);
+                      setSelected(null);
+                    }}
+                  >
+                    <option value="all">All accounts</option>
+                    {bankAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                        {a.mask ? ` · ${a.mask}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Filter category"
+                    value={category}
+                    onChange={(e) => chooseCategory(e.target.value)}
+                  >
+                    <option value="all">All categories</option>
+                    {categoryNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
           {page === "Overview" && preferences.widgets.length === 0 && (
             <div className="panel empty">
               <h2>Your dashboard</h2>
@@ -1277,7 +1326,26 @@ export default function App() {
               ))}
             </div>
           )}
-          {page === "Activity" && (
+          {page === "Activity" && activityView === "subscriptions" && (
+            <Subscriptions
+              transactions={state.transactions}
+              accounts={scopedAccounts}
+              bankAccounts={bankAccounts}
+              account={account}
+              onAccount={setAccount}
+              reviews={
+                mode === "demo"
+                  ? demoSubscriptionReviews
+                  : preferences.subscriptionReviews || []
+              }
+              onSave={saveSubscriptionReview}
+              fmt={fmt}
+              busy={busy}
+              today={end}
+              colors={colors}
+            />
+          )}
+          {page === "Activity" && activityView === "transactions" && (
             <>
               <div className="activity-stats">
                 <span>

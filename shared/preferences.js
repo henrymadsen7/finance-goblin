@@ -48,5 +48,6 @@ export const defaultPreferences = {
     "accounts",
   ],
   payments: [],
+  subscriptionReviews: [],
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
 };

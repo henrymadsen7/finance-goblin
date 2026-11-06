@@ -182,18 +182,37 @@ export function demoData(now = new Date()) {
   const merchants = [
     ["Whole Foods Market", "Food & drink", 8452],
     ["Blue Bottle Coffee", "Food & drink", 680],
-    ["Apple", "Subscriptions", 2999],
     ["Uber", "Transport", 2430],
     ["Sweetgreen", "Food & drink", 1865],
     ["Amazon", "Shopping", 6740],
-    ["Equinox", "Health", 21500],
-    ["Figma", "Subscriptions", 1500],
     ["Trader Joe’s", "Food & drink", 4832],
-    ["Spotify", "Subscriptions", 1299],
     ["Shell", "Transport", 5270],
     ["Airbnb", "Travel", 28400],
   ];
   const transactions = [];
+  const monthly = [
+    ["Netflix", "Entertainment", 1599, 2, "demo-amex"],
+    ["Spotify", "Entertainment", 1299, 9, "demo-amex"],
+    ["Figma", "Software", 1500, 15, "demo-boa"],
+    ["OpenAI", "Software", 2000, 18, "demo-amex"],
+    ["Equinox", "Health", 21500, 23, "demo-boa"],
+  ];
+  for (let month = 0; month < 4; month++) {
+    for (const [payee, category, amount, day, accountId] of monthly) {
+      const when = new Date(now.getFullYear(), now.getMonth() - month, day, 12);
+      if (when > now) continue;
+      transactions.push({
+        id: `sample-monthly-${month}-${payee}`,
+        date: when.toLocaleDateString("en-CA"),
+        payee,
+        category,
+        amount: -amount,
+        type: "expense",
+        accountId,
+        pending: false,
+      });
+    }
+  }
   for (let offset = 0; offset < 100; offset++) {
     const date = new Date(
       now.getFullYear(),

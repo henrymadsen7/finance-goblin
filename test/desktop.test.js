@@ -22,6 +22,7 @@ test("desktop access requires the app session and limits bank browsers to author
     "/",
     "/api/budgets",
     "/api/preferences",
+    "/api/subscriptions/review",
     "/api/import",
     "/api/provider/config",
     "/api/connections/item-1/disconnect",

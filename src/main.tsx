@@ -10,6 +10,7 @@ import "@fontsource/manrope/latin-700.css";
 import "./styles.css";
 import "./theme.css";
 import "./customization.css";
+import "./subscriptions.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

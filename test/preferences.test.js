@@ -194,6 +194,20 @@ test("settings API persists validated colors, widget order and credit-card plans
     currency: "USD",
     balance: 0,
   });
+  seed.put("transaction", "subscription-expense", {
+    id: "subscription-expense",
+    date: "2026-10-01",
+    accountId: "card",
+    type: "expense",
+    pending: false,
+    amount: -2000,
+  });
+  seed.put("transaction", "subscription-pending", {
+    id: "subscription-pending",
+    type: "expense",
+    pending: true,
+    amount: -2000,
+  });
   seed.close();
   const child = spawn(process.execPath, ["server/index.js"], {
     cwd: new URL("..", import.meta.url),
@@ -259,4 +273,48 @@ test("settings API persists validated colors, widget order and credit-card plans
   const stored = createStore(dir);
   assert.deepEqual(stored.get("preferences", "dashboard"), next);
   stored.close();
+  const review = {
+    transactionId: "subscription-expense",
+    decision: "confirmed",
+    category: "Software",
+    billingUrl: "https://example.com/account",
+  };
+  const postReview = (body) =>
+    fetch(base + "/api/subscriptions/review", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Finance-CSRF": state.csrf,
+      },
+      body: JSON.stringify(body),
+    });
+  assert.equal((await postReview(review)).status, 200);
+  assert.equal(
+    (await postReview({ ...review, decision: "dismissed" })).status,
+    200,
+  );
+  for (const invalid of [
+    { ...review, transactionId: "missing" },
+    { ...review, transactionId: "subscription-pending" },
+    { ...review, billingUrl: "javascript:alert(1)" },
+  ])
+    assert.equal((await postReview(invalid)).status, 400);
+  const reloaded = (await (await fetch(base + "/api/state")).json())
+    .preferences;
+  assert.equal(reloaded.profileName, next.profileName);
+  assert.deepEqual(reloaded.payments, next.payments);
+  assert.deepEqual(reloaded.appearance, next.appearance);
+  assert.deepEqual(reloaded.subscriptionReviews, [
+    { ...review, decision: "dismissed" },
+  ]);
+  const persisted = createStore(dir);
+  assert.deepEqual(
+    persisted.get("preferences", "dashboard").subscriptionReviews,
+    reloaded.subscriptionReviews,
+  );
+  assert.equal(
+    persisted.get("transaction", "subscription-expense").amount,
+    -2000,
+  );
+  persisted.close();
 });

@@ -1,6 +1,22 @@
 import { z } from "zod";
 import { defaultPreferences, widgetCatalog } from "../shared/preferences.js";
+import { safeBillingUrl } from "../shared/subscription-links.js";
 const color = z.string().regex(/^#[\da-fA-F]{6}$/);
+export const subscriptionReviewSchema = z
+  .object({
+    transactionId: z.string().min(1).max(200),
+    decision: z.enum(["auto", "confirmed", "dismissed"]),
+    category: z.string().trim().min(1).max(80).optional(),
+    billingUrl: z
+      .string()
+      .max(2000)
+      .refine(
+        safeBillingUrl,
+        "Use an HTTPS billing URL without embedded credentials.",
+      )
+      .optional(),
+  })
+  .strict();
 export const preferencesSchema = z
   .object({
     profileName: z.string().trim().min(1).max(40),
@@ -39,6 +55,14 @@ export const preferencesSchema = z
         (v) => new Set(v.map((p) => p.accountId)).size === v.length,
         "One schedule per card",
       ),
+    subscriptionReviews: z
+      .array(subscriptionReviewSchema)
+      .max(500)
+      .refine(
+        (v) => new Set(v.map((r) => r.transactionId)).size === v.length,
+        "One review per charge",
+      )
+      .default([]),
     timeZone: z
       .string()
       .max(80)

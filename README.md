@@ -8,7 +8,7 @@ Your data lives on your computer. Start with generated sample data, then connect
 
 ![Finance Goblin overview with a 3D daily cash-flow chart, cash and credit balances, and category spending](docs/assets/dashboard.png)
 
-*Dashboard preview using generated sample data. No real bank information is shown.*
+_Dashboard preview using generated sample data. No real bank information is shown._
 
 ## Start locally
 
@@ -44,11 +44,19 @@ See [connections, CSV format, synchronization, and privacy](docs/SETUP.md).
 - **Overview:** available deposit cash and card debt are separate from income and posted purchase expenses. Available credit is never cash. Unknown balances stay unknown.
 - **Bank and account filters:** view one bank, one account, or combined KPIs. Date and exact-category filters update charts, activity and exports together. Balances remain account-level values.
 - **Charts:** switch between 3D, 2D columns and a line. Move across a day to inspect income, spending less refunds, pending and net change; select it to explore transactions. 2D columns support keyboard inspection. The 3D view supports orbit and zoom with a 2D fallback.
+- **Subscriptions:** open **Activity → Subscriptions** to find monthly charges across multiple months, group by company/category, review evidence and estimated costs, and open billing or cancellation instructions. Confirm or hide suggestions and customize categories or billing links locally. [Detection and limitations](docs/SUBSCRIPTIONS.md).
 - **Activity and Budgets:** inspect category spending and monthly limits. Budgets are explicitly across all banks. Pending and transfers do not enter posted spending; refunds reduce expenses. Aggregated KPIs use USD only.
 - **Payments:** set your own monthly due day and earlier pay-by target, open the issuer, or export recurring calendar reminders. Nothing can send a payment or enroll AutoPay. Current balance is not the statement amount due. Mark AutoPay confirmed only after checking at your bank.
 - **Settings:** click your profile name or press **Command-comma**. Preview custom colors, category palettes, corner radius, profile/time zone, and widget visibility/order. Save persists locally; closing cancels the preview.
 
 The app checks its local snapshot every minute and retrieves available bank updates every 30 minutes while running. **Sync** checks sooner; it does not guarantee newly available bank data. Calendar exports must be imported into your calendar; changing a plan does not update an already imported reminder. No assistant reminders are bundled for other users.
+
+<details>
+<summary>Preview subscription tracking with sample data</summary>
+
+![Subscription tracking with company groups, monthly estimates, and billing links](docs/assets/subscriptions.png)
+
+</details>
 
 ## Privacy and limits
 

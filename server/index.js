@@ -7,7 +7,11 @@ import { createServer as createHttpsServer } from "node:https";
 import { z } from "zod";
 import { createStore } from "./store.js";
 import { migratePlaidCategories } from "./migrations.js";
-import { preferencesSchema, readPreferences } from "./preferences.js";
+import {
+  preferencesSchema,
+  readPreferences,
+  subscriptionReviewSchema,
+} from "./preferences.js";
 import { demoData, importCSV, categories } from "./domain.js";
 import { plaid, syncItem, linkTokenParams } from "./plaid.js";
 import { syncActual } from "./actual.js";
@@ -415,14 +419,41 @@ app.post("/api/preferences", (req, res, next) => {
     for (const plan of preferences.payments) {
       const account = store.get("account", plan.accountId);
       if (!account || account.type !== "credit")
-        return res
-          .status(400)
-          .json({
-            error: "Payment dates must belong to a connected credit card.",
-          });
+        return res.status(400).json({
+          error: "Payment dates must belong to a connected credit card.",
+        });
     }
     store.put("preferences", "dashboard", preferences);
     res.json({ ok: true, preferences });
+  } catch (e) {
+    next(e);
+  }
+});
+app.post("/api/subscriptions/review", (req, res, next) => {
+  try {
+    const review = subscriptionReviewSchema.parse(req.body);
+    const transaction = store.get("transaction", review.transactionId);
+    if (
+      !transaction ||
+      transaction.type !== "expense" ||
+      transaction.pending ||
+      transaction.amount >= 0
+    )
+      return res
+        .status(400)
+        .json({
+          error: "Choose a posted expense from your connected activity.",
+        });
+    const preferences = readPreferences(store);
+    preferences.subscriptionReviews = [
+      ...preferences.subscriptionReviews.filter(
+        (r) => r.transactionId !== review.transactionId,
+      ),
+      review,
+    ];
+    const validated = preferencesSchema.parse(preferences);
+    store.put("preferences", "dashboard", validated);
+    res.json({ ok: true, preferences: validated });
   } catch (e) {
     next(e);
   }
