@@ -1,5 +1,7 @@
 # Finance Goblin
 
+The desktop now has a shared entrance for **Life** and **Finance Goblin**. Life adds Today, Calendar, Projects, School, People (Connect), Inbox, Memory, and Settings. Both workspaces have a scoped Hermes assistant with document/image intake. See [Life setup, sources, privacy and assistant boundaries](docs/LIFE.md).
+
 A local personal-finance desktop app with interactive 3D cash flow, category analytics, available cash, credit-card balances, payment plans, and a customizable glass interface.
 
 **Development preview · Apple Silicon macOS · MIT**
@@ -83,3 +85,9 @@ See [contributing](CONTRIBUTING.md), [community conduct](CODE_OF_CONDUCT.md), an
 This standalone application is [MIT licensed](LICENSE); dependencies retain their own licenses. [Third-party notices](THIRD_PARTY_NOTICES.md) cover bundled React, Three.js, icons, fonts and [Liquid Glass React](https://github.com/rdev/liquid-glass-react). Server package notices ship in the installed dependency tree.
 
 Finance Goblin was developed as a new Electron/React application inside a larger Surf-Finance workspace. This standalone repository contains the new application only. The original private Swift Surf application and its Git history are excluded and are not relicensed by this project's MIT license. Actual Budget is integrated through a dependency, not copied into this source tree. Names of banks and providers identify integrations and do not imply affiliation.
+
+The assistants now include chat projects, independent conversations, recoverable archives, and a shared **Memory** navigation page. Search retained source excerpts and saved facts, filter by workspace/project/date, or explore their associations in 2D and 3D. See [the memory architecture and open-source review](docs/MEMORY.md) for storage, recall boundaries, dependencies and validation.
+
+To customize the assistants, open **Ask → Assistant settings → Chat appearance**. Glass, White, Black, and custom background/accent colors preview immediately; **Save chat appearance** keeps the choice for both workspaces. Text and panel colors adjust automatically.
+
+Move the desktop window by dragging empty space along its top edge, Life header, or assistant header.

@@ -42,6 +42,8 @@ import {
   Settings2,
   LineChart,
 } from "lucide-react";
+import MemoryView from "./platform/MemoryView";
+import { Brain } from "lucide-react";
 import { Settings } from "./Settings";
 import { Payments } from "./Payments";
 import { DailyChart } from "./DailyChart";
@@ -67,6 +69,7 @@ const pages = [
   { name: "Payments", icon: CreditCard },
   { name: "Budgets", icon: SlidersHorizontal },
   { name: "Connections", icon: PlugZap },
+  { name: "Memory", icon: Brain },
 ];
 function Glyph() {
   return (
@@ -295,7 +298,12 @@ export default function App() {
     setSelected(null);
     setSearch("");
   };
-  const scopeEnabled = !["Connections", "Budgets", "Settings"].includes(page);
+  const scopeEnabled = ![
+    "Connections",
+    "Budgets",
+    "Settings",
+    "Memory",
+  ].includes(page);
   const syncTimes = [
     ...(state?.connections.map((c) => c.lastSync) || []),
     state?.actual?.lastSync,
@@ -1099,7 +1107,7 @@ export default function App() {
           <div
             className="bank-switcher"
             role="group"
-            aria-label="Filter by bank"
+            aria-label={page === "Memory" ? "Memory library" : "Filter by bank"}
           >
             {scopeEnabled ? (
               <>
@@ -1117,13 +1125,18 @@ export default function App() {
               </>
             ) : (
               <span className="toolbar-title">
-                {page === "Budgets"
-                  ? "All banks · Monthly limits"
-                  : "Bank connections"}
+                {page === "Memory"
+                  ? "Memory"
+                  : page === "Budgets"
+                    ? "All banks · Monthly limits"
+                    : "Bank connections"}
               </span>
             )}
           </div>
-          <div className="topbar-right">
+          <div
+            className="topbar-right"
+            style={page === "Memory" ? { display: "none" } : undefined}
+          >
             <button
               className={`sync-control ${syncFailed ? "yellow" : ""}`}
               disabled={busy || state.syncing}
@@ -1163,667 +1176,696 @@ export default function App() {
           </div>
         </header>
         <main>
-          <div className="page-heading">
-            <div>
-              <h1>{page}</h1>
-            </div>
-            <div className="heading-actions">
-              {page === "Activity" && (
-                <button className="button" onClick={() => setModal("import")}>
-                  <Upload size={15} />
-                  Import CSV
-                </button>
-              )}
-              {["Accounts", "Connections"].includes(page) && (
-                <button
-                  className="primary"
-                  onClick={() =>
-                    state.provider.configured
-                      ? void action(() => launchLink())
-                      : setModal("plaid")
-                  }
-                >
-                  <Plus size={16} />
-                  Add bank
-                </button>
-              )}
-              {page === "Overview" && (
-                <span className="scope-caption">
-                  {scopedAccounts.length}{" "}
-                  {scopedAccounts.length === 1 ? "account" : "accounts"}
-                  {account !== "all"
-                    ? ` · ${scopedAccounts[0]?.name || "Selected account"}`
-                    : bank !== "all"
-                      ? ` · ${bank}`
-                      : " · Combined"}
-                </span>
-              )}
-            </div>
-          </div>
-          {mode === "demo" && (
-            <div className="mode-banner demo">
-              <strong>Sample data</strong>
-              <button onClick={() => setMode("live")}>
-                Back to my accounts <ArrowRight size={14} />
-              </button>
-            </div>
-          )}
-          {mode === "live" && state.provider.environment === "sandbox" && (
-            <div className="mode-banner demo">
-              <strong>Sandbox · Test accounts only</strong>
-              <button onClick={() => setModal("plaid")}>
-                Connection settings
-              </button>
-            </div>
-          )}
-          {error && (
-            <div className="error-banner" role="alert">
-              <AlertCircle size={16} />
-              {error}
-              <button aria-label="Dismiss error" onClick={() => setError("")}>
-                <X size={15} />
-              </button>
-            </div>
-          )}
-          {page === "Activity" && (
-            <div
-              className="activity-tabs"
-              role="group"
-              aria-label="Activity views"
-            >
-              <button
-                aria-pressed={activityView === "transactions"}
-                onClick={() => setActivityView("transactions")}
+          {page === "Memory" && <MemoryView workspace="finance" />}
+          {page !== "Memory" && (
+            <>
+              <div
+                className="page-heading"
+                style={page === "Memory" ? { display: "none" } : undefined}
               >
-                All activity
-              </button>
-              <button
-                aria-pressed={activityView === "subscriptions"}
-                onClick={() => setActivityView("subscriptions")}
-              >
-                Subscriptions
-              </button>
-            </div>
-          )}
-          {!(page === "Activity" && activityView === "subscriptions") &&
-            !["Connections", "Accounts", "Budgets", "Payments"].includes(
-              page,
-            ) && (
-              <div className="filterbar">
-                <div className="periods">
-                  <GlassChrome radius={13} />
-                  {[
-                    ["7", "7 days"],
-                    ["30", "30 days"],
-                    ["90", "90 days"],
-                    ["month", "This month"],
-                  ].map(([id, label]) => (
-                    <button
-                      aria-pressed={period === id}
-                      className={period === id ? "active" : ""}
-                      onClick={() => {
-                        setPeriod(id);
-                        setSelected(null);
-                      }}
-                      key={id}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="filter-right">
-                  <span className="date-range">
-                    <CalendarDays size={14} />
-                    {dateLabel(start)} – {dateLabel(end)},{" "}
-                    {new Date().getFullYear()}
-                  </span>
-                  <select
-                    aria-label="Filter account"
-                    value={account}
-                    onChange={(e) => {
-                      setAccount(e.target.value);
-                      setSelected(null);
-                    }}
-                  >
-                    <option value="all">All accounts</option>
-                    {bankAccounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                        {a.mask ? ` · ${a.mask}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Filter category"
-                    value={category}
-                    onChange={(e) => chooseCategory(e.target.value)}
-                  >
-                    <option value="all">All categories</option>
-                    {categoryNames.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-          {page === "Overview" && preferences.widgets.length === 0 && (
-            <div className="panel empty">
-              <h2>Your dashboard</h2>
-              <button className="primary" onClick={() => setModal("settings")}>
-                Choose widgets
-              </button>
-            </div>
-          )}
-          {page === "Overview" && (
-            <div className="dashboard-grid">
-              {preferences.widgets.map((id) => (
-                <div
-                  key={id}
-                  className={`dashboard-widget widget-${id}`}
-                  style={{ gridColumn: widgetColumn(id) }}
-                >
-                  {renderWidget(id)}
-                </div>
-              ))}
-            </div>
-          )}
-          {page === "Activity" && activityView === "subscriptions" && (
-            <Subscriptions
-              transactions={state.transactions}
-              accounts={scopedAccounts}
-              bankAccounts={bankAccounts}
-              account={account}
-              onAccount={setAccount}
-              reviews={
-                mode === "demo"
-                  ? demoSubscriptionReviews
-                  : preferences.subscriptionReviews || []
-              }
-              onSave={saveSubscriptionReview}
-              fmt={fmt}
-              busy={busy}
-              today={end}
-              colors={colors}
-            />
-          )}
-          {page === "Activity" && activityView === "transactions" && (
-            <>
-              <div className="activity-stats">
-                <span>
-                  <i className="green-dot" />
-                  Income <strong>{fmt(sum.income)}</strong>
-                </span>
-                <span>
-                  <i className="red-dot" />
-                  Expenses <strong>{fmt(sum.expense)}</strong>
-                </span>
-                <span>
-                  <i className="yellow-dot" />
-                  Pending <strong>{fmt(sum.pending)}</strong>
-                </span>
-                <span>Transfers excluded from cash-flow totals</span>
-              </div>
-              <div className="activity-charts">
-                <CategorySpend
-                  rows={accountRows}
-                  selected={category}
-                  onSelect={chooseCategory}
-                  hidden={hidden}
-                  colors={colors}
-                />
-                {renderChart()}
-              </div>
-              {renderTransactions({})}
-            </>
-          )}
-          {page === "Cash flow" && (
-            <>
-              {renderChart()}
-              <div className="daily-heading">
                 <div>
-                  <h2>Day by day</h2>
-                  <p>
-                    Posted income and expenses. Pending activity stays separate.
-                  </p>
+                  <h1>{page}</h1>
                 </div>
-                {selected && (
-                  <button className="button" onClick={() => setSelected(null)}>
-                    Clear selection <X size={13} />
-                  </button>
-                )}
-              </div>
-              <div className="daily-grid">
-                {days.map((d) => (
-                  <button
-                    className={`day-card ${selected === d.date ? "selected" : ""}`}
-                    key={d.date}
-                    onClick={() => chooseDay(d.date)}
-                  >
-                    <span>
-                      {new Date(d.date + "T12:00:00").toLocaleDateString(
-                        "en-US",
-                        { weekday: "short" },
-                      )}
-                      <b>{dateLabel(d.date)}</b>
-                    </span>
-                    <strong
-                      className={
-                        d.net > 0 ? "green" : d.net < 0 ? "red" : "muted"
-                      }
-                    >
-                      {fmt(d.net, true)}
-                    </strong>
-                    <small>
-                      <span className="green">↙ {fmt(d.income, true)}</span>
-                      <span className="red">↗ {fmt(d.expense, true)}</span>
-                    </small>
-                    {d.pending > 0 && (
-                      <small className="yellow">{fmt(d.pending)} pending</small>
-                    )}
-                  </button>
-                ))}
-              </div>
-              {selected && renderTransactions({})}
-            </>
-          )}
-          {page === "Payments" && renderPayments()}
-          {page === "Accounts" && (
-            <>
-              <div className="account-summary">
-                <div>
-                  <span className="summary-label">Cash available</span>
-                  <h2>
-                    {balance.cashKnownCount ? fmt(balance.availableCash) : "—"}
-                  </h2>
-                </div>
-                <div>
-                  <span className="summary-label">Card balances owed</span>
-                  <h2>{fmt(balance.creditDebt)}</h2>
-                </div>
-              </div>
-              <div className="account-cards">
-                {scopedAccounts.map((a) => (
-                  <section className="panel account-card" key={a.id}>
-                    <div className="panel-head">
-                      <span
-                        className={`bank-icon ${a.institution.includes("American") ? "amex" : "boa"}`}
-                      >
-                        {a.institution.includes("American")
-                          ? "AMEX"
-                          : a.source === "actual"
-                            ? "A"
-                            : a.source === "csv"
-                              ? "CSV"
-                              : "BofA"}
-                      </span>
-                      <span className="subtle-chip">
-                        {a.source === "demo"
-                          ? "Sample"
-                          : ["credit", "loan"].includes(a.type)
-                            ? "Credit"
-                            : a.type === "depository"
-                              ? "Spendable cash"
-                              : "Account"}
-                      </span>
-                    </div>
-                    <p>{a.institution}</p>
-                    <h2>{a.name}</h2>
-                    <span className="muted">
-                      {a.mask ? "•••• " + a.mask : "Account"}
-                    </span>
-                    <div className="account-balance-kind">
-                      {a.type === "credit"
-                        ? "Balance owed"
-                        : a.type === "depository"
-                          ? a.available != null
-                            ? "Available to spend"
-                            : "Current cash balance"
-                          : "Balance"}
-                    </div>
-                    <strong className="account-balance">
-                      {a.balance === null
-                        ? "Balance unknown"
-                        : a.currency && a.currency !== "USD"
-                          ? `${a.currency} ${(a.balance / 100).toFixed(2)}`
-                          : fmt(
-                              a.type === "depository"
-                                ? (a.available ?? a.balance)
-                                : a.balance,
-                            )}
-                    </strong>
-                    <p className="small-copy">
-                      {a.asOf
-                        ? `Retrieved ${new Date(a.asOf).toLocaleString()}`
-                        : a.source === "csv"
-                          ? "CSV includes activity only. Balance is not inferred."
-                          : "Illustrative balance for this preview."}
-                    </p>
+                <div className="heading-actions">
+                  {page === "Activity" && (
                     <button
                       className="button"
-                      onClick={() => {
-                        exploreAccount(a.id, a.institution);
-                      }}
+                      onClick={() => setModal("import")}
                     >
-                      Explore activity <ArrowUpRight size={14} />
+                      <Upload size={15} />
+                      Import CSV
                     </button>
-                  </section>
-                ))}
-                <button
-                  className="add-account"
-                  onClick={() => go("Connections")}
-                >
-                  <Plus size={26} />
-                  <h3>Add bank</h3>
-                  <p>Connect a bank or link your Actual budget.</p>
-                </button>
-              </div>
-            </>
-          )}
-          {page === "Budgets" && (
-            <>
-              <div className="section-toolbar">
-                <div>
-                  <span className="subtle-chip">
-                    {new Date().toLocaleDateString("en-US", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </span>
-                  <p>
-                    Monthly limits in USD · posted expenses less refunds · all
-                    accounts
-                  </p>
+                  )}
+                  {["Accounts", "Connections"].includes(page) && (
+                    <button
+                      className="primary"
+                      onClick={() =>
+                        state.provider.configured
+                          ? void action(() => launchLink())
+                          : setModal("plaid")
+                      }
+                    >
+                      <Plus size={16} />
+                      Add bank
+                    </button>
+                  )}
+                  {page === "Overview" && (
+                    <span className="scope-caption">
+                      {scopedAccounts.length}{" "}
+                      {scopedAccounts.length === 1 ? "account" : "accounts"}
+                      {account !== "all"
+                        ? ` · ${scopedAccounts[0]?.name || "Selected account"}`
+                        : bank !== "all"
+                          ? ` · ${bank}`
+                          : " · Combined"}
+                    </span>
+                  )}
                 </div>
-                <button
-                  className="primary"
-                  onClick={() => {
-                    setBudgetEdits({ ...budgets });
-                    setModal("budgets");
-                  }}
-                >
-                  <SlidersHorizontal size={15} />
-                  Edit budgets
-                </button>
               </div>
-              <div className="budget-grid">
-                {[
-                  ...new Set([
-                    ...Object.keys(budgets),
-                    ...monthRows.map((t) => t.category),
-                  ]),
-                ]
-                  .filter((c) => c !== "Income" && c !== "Transfer")
-                  .map((category, i) => {
-                    const spent = monthSpend(category),
-                      budget = budgets[category] || 0,
-                      ratio = budget ? spent / budget : 0;
-                    return (
-                      <section className="panel budget-card" key={category}>
-                        <div className="panel-head">
-                          <span
-                            className="category-mark"
-                            style={{ color: colors[i % colors.length] }}
-                          >
-                            {category[0]}
-                          </span>
-                          <span
-                            className={`subtle-chip ${ratio > 1 ? "red" : ratio > 0.8 ? "yellow" : ""}`}
-                          >
-                            {budget
-                              ? ratio > 1
-                                ? "Over budget"
-                                : ratio > 0.8
-                                  ? "Approaching limit"
-                                  : "On track"
-                              : "No limit set"}
-                          </span>
-                        </div>
-                        <h2>{category}</h2>
-                        <div className="budget-amount">
-                          <strong>{fmt(spent, true)}</strong>
-                          <span>
-                            {budget ? `of ${fmt(budget, true)}` : "spent"}
-                          </span>
-                        </div>
-                        <div className="progress">
-                          <i
-                            style={{
-                              width: `${Math.min(100, Math.max(0, ratio * 100))}%`,
-                              background:
-                                ratio > 1
-                                  ? "var(--red)"
-                                  : ratio > 0.8
-                                    ? "var(--yellow)"
-                                    : colors[i % colors.length],
-                            }}
-                          />
-                        </div>
-                        {budget > 0 && (
-                          <p>{`${fmt(Math.abs(budget - spent), true)} ${spent > budget ? "over your budget" : "left to spend"}`}</p>
-                        )}
-                      </section>
-                    );
-                  })}
-              </div>
-              {!Object.keys(budgets).length && !monthRows.length && (
-                <div className="panel empty">
-                  <SlidersHorizontal size={32} />
-                  <h3>No budgets yet</h3>
-                  <p>
-                    Create your first budget to start tracking monthly goals.
-                  </p>
-                </div>
-              )}
               {mode === "demo" && (
-                <p className="small-copy">
-                  Sample budgets can be edited for this preview. Your real
-                  budgets are stored separately.
-                </p>
-              )}
-            </>
-          )}
-          {page === "Connections" && (
-            <>
-              <div className="panel connection-list">
-                <div className="panel-head">
-                  <div>
-                    <h2>Connected banks</h2>
-                  </div>
-                  <button
-                    className="button"
-                    disabled={busy || state.syncing}
-                    onClick={sync}
-                  >
-                    <RefreshCw
-                      size={14}
-                      className={state.syncing ? "spin" : ""}
-                    />
-                    Sync now
+                <div className="mode-banner demo">
+                  <strong>Sample data</strong>
+                  <button onClick={() => setMode("live")}>
+                    Back to my accounts <ArrowRight size={14} />
                   </button>
                 </div>
-                {state.connections.map((c) => (
-                  <div className="connection-row" key={c.id}>
-                    <Landmark size={22} />
-                    <div>
-                      <strong>{c.institution}</strong>
-                      <small className={c.error ? "yellow" : ""}>
-                        {c.error ||
-                          (c.lastSync
-                            ? `Last synced ${new Date(c.lastSync).toLocaleString()}`
-                            : "Waiting for first sync")}
-                      </small>
+              )}
+              {mode === "live" && state.provider.environment === "sandbox" && (
+                <div className="mode-banner demo">
+                  <strong>Sandbox · Test accounts only</strong>
+                  <button onClick={() => setModal("plaid")}>
+                    Connection settings
+                  </button>
+                </div>
+              )}
+              {error && (
+                <div className="error-banner" role="alert">
+                  <AlertCircle size={16} />
+                  {error}
+                  <button
+                    aria-label="Dismiss error"
+                    onClick={() => setError("")}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              )}
+              {page === "Activity" && (
+                <div
+                  className="activity-tabs"
+                  role="group"
+                  aria-label="Activity views"
+                >
+                  <button
+                    aria-pressed={activityView === "transactions"}
+                    onClick={() => setActivityView("transactions")}
+                  >
+                    All activity
+                  </button>
+                  <button
+                    aria-pressed={activityView === "subscriptions"}
+                    onClick={() => setActivityView("subscriptions")}
+                  >
+                    Subscriptions
+                  </button>
+                </div>
+              )}
+              {!(page === "Activity" && activityView === "subscriptions") &&
+                !["Connections", "Accounts", "Budgets", "Payments"].includes(
+                  page,
+                ) && (
+                  <div className="filterbar">
+                    <div className="periods">
+                      <GlassChrome radius={13} />
+                      {[
+                        ["7", "7 days"],
+                        ["30", "30 days"],
+                        ["90", "90 days"],
+                        ["month", "This month"],
+                      ].map(([id, label]) => (
+                        <button
+                          aria-pressed={period === id}
+                          className={period === id ? "active" : ""}
+                          onClick={() => {
+                            setPeriod(id);
+                            setSelected(null);
+                          }}
+                          key={id}
+                        >
+                          {label}
+                        </button>
+                      ))}
                     </div>
-                    <button
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() => void action(() => launchLink(c.id))}
-                    >
-                      Reconnect
-                    </button>
-                    <button
-                      className="text-button red"
-                      onClick={() => setModal("disconnect:" + c.id)}
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                ))}
-                {state.actual?.configured && (
-                  <div className="connection-row">
-                    <span className="actual-a">A</span>
-                    <div>
-                      <strong>Actual Budget</strong>
-                      <small className={state.actual.error ? "yellow" : ""}>
-                        {state.actual.error ||
-                          (state.actual.lastSync
-                            ? `Last synced ${new Date(state.actual.lastSync).toLocaleString()}`
-                            : "Ready to sync")}
-                      </small>
+                    <div className="filter-right">
+                      <span className="date-range">
+                        <CalendarDays size={14} />
+                        {dateLabel(start)} – {dateLabel(end)},{" "}
+                        {new Date().getFullYear()}
+                      </span>
+                      <select
+                        aria-label="Filter account"
+                        value={account}
+                        onChange={(e) => {
+                          setAccount(e.target.value);
+                          setSelected(null);
+                        }}
+                      >
+                        <option value="all">All accounts</option>
+                        {bankAccounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                            {a.mask ? ` · ${a.mask}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label="Filter category"
+                        value={category}
+                        onChange={(e) => chooseCategory(e.target.value)}
+                      >
+                        <option value="all">All categories</option>
+                        {categoryNames.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <button
-                      className="text-button"
-                      onClick={() => setModal("actual")}
-                    >
-                      Settings
-                    </button>
                   </div>
                 )}
-                {!state.connections.length && !state.actual?.configured && (
-                  <div className="empty horizontal">
-                    <PlugZap size={24} />
+              {page === "Overview" && preferences.widgets.length === 0 && (
+                <div className="panel empty">
+                  <h2>Your dashboard</h2>
+                  <button
+                    className="primary"
+                    onClick={() => setModal("settings")}
+                  >
+                    Choose widgets
+                  </button>
+                </div>
+              )}
+              {page === "Overview" && (
+                <div className="dashboard-grid">
+                  {preferences.widgets.map((id) => (
+                    <div
+                      key={id}
+                      className={`dashboard-widget widget-${id}`}
+                      style={{ gridColumn: widgetColumn(id) }}
+                    >
+                      {renderWidget(id)}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {page === "Activity" && activityView === "subscriptions" && (
+                <Subscriptions
+                  transactions={state.transactions}
+                  accounts={scopedAccounts}
+                  bankAccounts={bankAccounts}
+                  account={account}
+                  onAccount={setAccount}
+                  reviews={
+                    mode === "demo"
+                      ? demoSubscriptionReviews
+                      : preferences.subscriptionReviews || []
+                  }
+                  onSave={saveSubscriptionReview}
+                  fmt={fmt}
+                  busy={busy}
+                  today={end}
+                  colors={colors}
+                />
+              )}
+              {page === "Activity" && activityView === "transactions" && (
+                <>
+                  <div className="activity-stats">
+                    <span>
+                      <i className="green-dot" />
+                      Income <strong>{fmt(sum.income)}</strong>
+                    </span>
+                    <span>
+                      <i className="red-dot" />
+                      Expenses <strong>{fmt(sum.expense)}</strong>
+                    </span>
+                    <span>
+                      <i className="yellow-dot" />
+                      Pending <strong>{fmt(sum.pending)}</strong>
+                    </span>
+                    <span>Transfers excluded from cash-flow totals</span>
+                  </div>
+                  <div className="activity-charts">
+                    <CategorySpend
+                      rows={accountRows}
+                      selected={category}
+                      onSelect={chooseCategory}
+                      hidden={hidden}
+                      colors={colors}
+                    />
+                    {renderChart()}
+                  </div>
+                  {renderTransactions({})}
+                </>
+              )}
+              {page === "Cash flow" && (
+                <>
+                  {renderChart()}
+                  <div className="daily-heading">
                     <div>
-                      <strong>No banks connected yet</strong>
+                      <h2>Day by day</h2>
                       <p>
-                        Your real connections will appear here. Sample accounts
-                        are only a preview.
+                        Posted income and expenses. Pending activity stays
+                        separate.
                       </p>
                     </div>
-                  </div>
-                )}
-              </div>
-              <button
-                className="text-button"
-                onClick={() => setModal("privacy")}
-              >
-                <ShieldCheck size={15} />
-                {state.security?.keyProtection === "macos-keychain"
-                  ? "Keychain-protected vault · Access details"
-                  : "Connection security and privacy"}
-              </button>
-              <details className="connection-options">
-                <summary>Settings and imports</summary>
-                <div className="connection-grid">
-                  <section className="panel provider-card">
-                    <div className="provider-logo">
-                      plaid<span>↗</span>
-                    </div>
-                    <span
-                      className={`status-label ${state.provider.configured ? "green" : "yellow"}`}
-                    >
-                      <i />
-                      {state.provider.configured
-                        ? `${state.provider.environment} configured`
-                        : "Setup needed"}
-                    </span>
-                    <h2>Connect your banks</h2>
-                    <p>
-                      Link Bank of America, American Express, and other
-                      supported institutions using Plaid’s bank authorization
-                      flow.
-                    </p>
-                    <div className="provider-actions">
-                      <button
-                        className="primary"
-                        disabled={busy}
-                        onClick={() =>
-                          state.provider.configured
-                            ? void action(() => launchLink())
-                            : setModal("plaid")
-                        }
-                      >
-                        {state.provider.configured
-                          ? "Connect a bank"
-                          : "Set up Plaid"}
-                        <ArrowRight size={15} />
-                      </button>
-                      <button
-                        className="text-button"
-                        onClick={() => setModal("plaid")}
-                      >
-                        API settings
-                      </button>
-                    </div>
-                    <small>
-                      Transactions sync every 30 minutes while this app runs.
-                      Bank data refresh timing varies.
-                    </small>
-                  </section>
-                  <section className="panel provider-card">
-                    <div className="provider-logo actual-logo">
-                      actual<span>▨</span>
-                    </div>
-                    <span
-                      className={`status-label ${state.actual?.configured ? "green" : "muted"}`}
-                    >
-                      <i />
-                      {state.actual?.configured
-                        ? "Budget linked"
-                        : "Optional data source"}
-                    </span>
-                    <h2>Actual Budget</h2>
-                    <p>
-                      Keep Actual as your ledger. Read account balances,
-                      categories, and transactions from your Actual server.
-                    </p>
-                    <div className="provider-actions">
+                    {selected && (
                       <button
                         className="button"
-                        onClick={() => setModal("actual")}
+                        onClick={() => setSelected(null)}
                       >
-                        {state.actual?.configured
-                          ? "Actual settings"
-                          : "Connect Actual"}
-                        <ArrowRight size={15} />
+                        Clear selection <X size={13} />
                       </button>
-                      <a
-                        className="text-button"
-                        href="https://actualbudget.org/docs/"
-                        target="_blank"
-                        rel="noreferrer"
+                    )}
+                  </div>
+                  <div className="daily-grid">
+                    {days.map((d) => (
+                      <button
+                        className={`day-card ${selected === d.date ? "selected" : ""}`}
+                        key={d.date}
+                        onClick={() => chooseDay(d.date)}
                       >
-                        About Actual <ExternalLink size={13} />
-                      </a>
+                        <span>
+                          {new Date(d.date + "T12:00:00").toLocaleDateString(
+                            "en-US",
+                            { weekday: "short" },
+                          )}
+                          <b>{dateLabel(d.date)}</b>
+                        </span>
+                        <strong
+                          className={
+                            d.net > 0 ? "green" : d.net < 0 ? "red" : "muted"
+                          }
+                        >
+                          {fmt(d.net, true)}
+                        </strong>
+                        <small>
+                          <span className="green">↙ {fmt(d.income, true)}</span>
+                          <span className="red">↗ {fmt(d.expense, true)}</span>
+                        </small>
+                        {d.pending > 0 && (
+                          <small className="yellow">
+                            {fmt(d.pending)} pending
+                          </small>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  {selected && renderTransactions({})}
+                </>
+              )}
+              {page === "Payments" && renderPayments()}
+              {page === "Accounts" && (
+                <>
+                  <div className="account-summary">
+                    <div>
+                      <span className="summary-label">Cash available</span>
+                      <h2>
+                        {balance.cashKnownCount
+                          ? fmt(balance.availableCash)
+                          : "—"}
+                      </h2>
                     </div>
-                    <small>
-                      Read-only projection. It does not edit your Actual budget
-                      or start bank imports.
-                    </small>
-                  </section>
-                </div>
-                <div className="panel csv-card">
-                  <div className="csv-icon">
-                    <Upload size={23} />
+                    <div>
+                      <span className="summary-label">Card balances owed</span>
+                      <h2>{fmt(balance.creditDebt)}</h2>
+                    </div>
                   </div>
-                  <div>
-                    <h2>Import transactions</h2>
-                    <p>
-                      Import transactions from any bank with a CSV. Preview
-                      before importing, with duplicate detection.
+                  <div className="account-cards">
+                    {scopedAccounts.map((a) => (
+                      <section className="panel account-card" key={a.id}>
+                        <div className="panel-head">
+                          <span
+                            className={`bank-icon ${a.institution.includes("American") ? "amex" : "boa"}`}
+                          >
+                            {a.institution.includes("American")
+                              ? "AMEX"
+                              : a.source === "actual"
+                                ? "A"
+                                : a.source === "csv"
+                                  ? "CSV"
+                                  : "BofA"}
+                          </span>
+                          <span className="subtle-chip">
+                            {a.source === "demo"
+                              ? "Sample"
+                              : ["credit", "loan"].includes(a.type)
+                                ? "Credit"
+                                : a.type === "depository"
+                                  ? "Spendable cash"
+                                  : "Account"}
+                          </span>
+                        </div>
+                        <p>{a.institution}</p>
+                        <h2>{a.name}</h2>
+                        <span className="muted">
+                          {a.mask ? "•••• " + a.mask : "Account"}
+                        </span>
+                        <div className="account-balance-kind">
+                          {a.type === "credit"
+                            ? "Balance owed"
+                            : a.type === "depository"
+                              ? a.available != null
+                                ? "Available to spend"
+                                : "Current cash balance"
+                              : "Balance"}
+                        </div>
+                        <strong className="account-balance">
+                          {a.balance === null
+                            ? "Balance unknown"
+                            : a.currency && a.currency !== "USD"
+                              ? `${a.currency} ${(a.balance / 100).toFixed(2)}`
+                              : fmt(
+                                  a.type === "depository"
+                                    ? (a.available ?? a.balance)
+                                    : a.balance,
+                                )}
+                        </strong>
+                        <p className="small-copy">
+                          {a.asOf
+                            ? `Retrieved ${new Date(a.asOf).toLocaleString()}`
+                            : a.source === "csv"
+                              ? "CSV includes activity only. Balance is not inferred."
+                              : "Illustrative balance for this preview."}
+                        </p>
+                        <button
+                          className="button"
+                          onClick={() => {
+                            exploreAccount(a.id, a.institution);
+                          }}
+                        >
+                          Explore activity <ArrowUpRight size={14} />
+                        </button>
+                      </section>
+                    ))}
+                    <button
+                      className="add-account"
+                      onClick={() => go("Connections")}
+                    >
+                      <Plus size={26} />
+                      <h3>Add bank</h3>
+                      <p>Connect a bank or link your Actual budget.</p>
+                    </button>
+                  </div>
+                </>
+              )}
+              {page === "Budgets" && (
+                <>
+                  <div className="section-toolbar">
+                    <div>
+                      <span className="subtle-chip">
+                        {new Date().toLocaleDateString("en-US", {
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <p>
+                        Monthly limits in USD · posted expenses less refunds ·
+                        all accounts
+                      </p>
+                    </div>
+                    <button
+                      className="primary"
+                      onClick={() => {
+                        setBudgetEdits({ ...budgets });
+                        setModal("budgets");
+                      }}
+                    >
+                      <SlidersHorizontal size={15} />
+                      Edit budgets
+                    </button>
+                  </div>
+                  <div className="budget-grid">
+                    {[
+                      ...new Set([
+                        ...Object.keys(budgets),
+                        ...monthRows.map((t) => t.category),
+                      ]),
+                    ]
+                      .filter((c) => c !== "Income" && c !== "Transfer")
+                      .map((category, i) => {
+                        const spent = monthSpend(category),
+                          budget = budgets[category] || 0,
+                          ratio = budget ? spent / budget : 0;
+                        return (
+                          <section className="panel budget-card" key={category}>
+                            <div className="panel-head">
+                              <span
+                                className="category-mark"
+                                style={{ color: colors[i % colors.length] }}
+                              >
+                                {category[0]}
+                              </span>
+                              <span
+                                className={`subtle-chip ${ratio > 1 ? "red" : ratio > 0.8 ? "yellow" : ""}`}
+                              >
+                                {budget
+                                  ? ratio > 1
+                                    ? "Over budget"
+                                    : ratio > 0.8
+                                      ? "Approaching limit"
+                                      : "On track"
+                                  : "No limit set"}
+                              </span>
+                            </div>
+                            <h2>{category}</h2>
+                            <div className="budget-amount">
+                              <strong>{fmt(spent, true)}</strong>
+                              <span>
+                                {budget ? `of ${fmt(budget, true)}` : "spent"}
+                              </span>
+                            </div>
+                            <div className="progress">
+                              <i
+                                style={{
+                                  width: `${Math.min(100, Math.max(0, ratio * 100))}%`,
+                                  background:
+                                    ratio > 1
+                                      ? "var(--red)"
+                                      : ratio > 0.8
+                                        ? "var(--yellow)"
+                                        : colors[i % colors.length],
+                                }}
+                              />
+                            </div>
+                            {budget > 0 && (
+                              <p>{`${fmt(Math.abs(budget - spent), true)} ${spent > budget ? "over your budget" : "left to spend"}`}</p>
+                            )}
+                          </section>
+                        );
+                      })}
+                  </div>
+                  {!Object.keys(budgets).length && !monthRows.length && (
+                    <div className="panel empty">
+                      <SlidersHorizontal size={32} />
+                      <h3>No budgets yet</h3>
+                      <p>
+                        Create your first budget to start tracking monthly
+                        goals.
+                      </p>
+                    </div>
+                  )}
+                  {mode === "demo" && (
+                    <p className="small-copy">
+                      Sample budgets can be edited for this preview. Your real
+                      budgets are stored separately.
                     </p>
+                  )}
+                </>
+              )}
+              {page === "Connections" && (
+                <>
+                  <div className="panel connection-list">
+                    <div className="panel-head">
+                      <div>
+                        <h2>Connected banks</h2>
+                      </div>
+                      <button
+                        className="button"
+                        disabled={busy || state.syncing}
+                        onClick={sync}
+                      >
+                        <RefreshCw
+                          size={14}
+                          className={state.syncing ? "spin" : ""}
+                        />
+                        Sync now
+                      </button>
+                    </div>
+                    {state.connections.map((c) => (
+                      <div className="connection-row" key={c.id}>
+                        <Landmark size={22} />
+                        <div>
+                          <strong>{c.institution}</strong>
+                          <small className={c.error ? "yellow" : ""}>
+                            {c.error ||
+                              (c.lastSync
+                                ? `Last synced ${new Date(c.lastSync).toLocaleString()}`
+                                : "Waiting for first sync")}
+                          </small>
+                        </div>
+                        <button
+                          className="text-button"
+                          disabled={busy}
+                          onClick={() => void action(() => launchLink(c.id))}
+                        >
+                          Reconnect
+                        </button>
+                        <button
+                          className="text-button red"
+                          onClick={() => setModal("disconnect:" + c.id)}
+                        >
+                          Disconnect
+                        </button>
+                      </div>
+                    ))}
+                    {state.actual?.configured && (
+                      <div className="connection-row">
+                        <span className="actual-a">A</span>
+                        <div>
+                          <strong>Actual Budget</strong>
+                          <small className={state.actual.error ? "yellow" : ""}>
+                            {state.actual.error ||
+                              (state.actual.lastSync
+                                ? `Last synced ${new Date(state.actual.lastSync).toLocaleString()}`
+                                : "Ready to sync")}
+                          </small>
+                        </div>
+                        <button
+                          className="text-button"
+                          onClick={() => setModal("actual")}
+                        >
+                          Settings
+                        </button>
+                      </div>
+                    )}
+                    {!state.connections.length && !state.actual?.configured && (
+                      <div className="empty horizontal">
+                        <PlugZap size={24} />
+                        <div>
+                          <strong>No banks connected yet</strong>
+                          <p>
+                            Your real connections will appear here. Sample
+                            accounts are only a preview.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <button className="button" onClick={() => setModal("import")}>
-                    Import CSV <ArrowUpRight size={14} />
+                  <button
+                    className="text-button"
+                    onClick={() => setModal("privacy")}
+                  >
+                    <ShieldCheck size={15} />
+                    {state.security?.keyProtection === "macos-keychain"
+                      ? "Keychain-protected vault · Access details"
+                      : "Connection security and privacy"}
                   </button>
-                </div>
-                <p className="source-note">
-                  <Info size={14} />
-                  Use one source per real account to avoid counting the same
-                  activity twice across Plaid, Actual, and CSV. USD totals
-                  exclude other currencies.
-                </p>
-              </details>
+                  <details className="connection-options">
+                    <summary>Settings and imports</summary>
+                    <div className="connection-grid">
+                      <section className="panel provider-card">
+                        <div className="provider-logo">
+                          plaid<span>↗</span>
+                        </div>
+                        <span
+                          className={`status-label ${state.provider.configured ? "green" : "yellow"}`}
+                        >
+                          <i />
+                          {state.provider.configured
+                            ? `${state.provider.environment} configured`
+                            : "Setup needed"}
+                        </span>
+                        <h2>Connect your banks</h2>
+                        <p>
+                          Link Bank of America, American Express, and other
+                          supported institutions using Plaid’s bank
+                          authorization flow.
+                        </p>
+                        <div className="provider-actions">
+                          <button
+                            className="primary"
+                            disabled={busy}
+                            onClick={() =>
+                              state.provider.configured
+                                ? void action(() => launchLink())
+                                : setModal("plaid")
+                            }
+                          >
+                            {state.provider.configured
+                              ? "Connect a bank"
+                              : "Set up Plaid"}
+                            <ArrowRight size={15} />
+                          </button>
+                          <button
+                            className="text-button"
+                            onClick={() => setModal("plaid")}
+                          >
+                            API settings
+                          </button>
+                        </div>
+                        <small>
+                          Transactions sync every 30 minutes while this app
+                          runs. Bank data refresh timing varies.
+                        </small>
+                      </section>
+                      <section className="panel provider-card">
+                        <div className="provider-logo actual-logo">
+                          actual<span>▨</span>
+                        </div>
+                        <span
+                          className={`status-label ${state.actual?.configured ? "green" : "muted"}`}
+                        >
+                          <i />
+                          {state.actual?.configured
+                            ? "Budget linked"
+                            : "Optional data source"}
+                        </span>
+                        <h2>Actual Budget</h2>
+                        <p>
+                          Keep Actual as your ledger. Read account balances,
+                          categories, and transactions from your Actual server.
+                        </p>
+                        <div className="provider-actions">
+                          <button
+                            className="button"
+                            onClick={() => setModal("actual")}
+                          >
+                            {state.actual?.configured
+                              ? "Actual settings"
+                              : "Connect Actual"}
+                            <ArrowRight size={15} />
+                          </button>
+                          <a
+                            className="text-button"
+                            href="https://actualbudget.org/docs/"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            About Actual <ExternalLink size={13} />
+                          </a>
+                        </div>
+                        <small>
+                          Read-only projection. It does not edit your Actual
+                          budget or start bank imports.
+                        </small>
+                      </section>
+                    </div>
+                    <div className="panel csv-card">
+                      <div className="csv-icon">
+                        <Upload size={23} />
+                      </div>
+                      <div>
+                        <h2>Import transactions</h2>
+                        <p>
+                          Import transactions from any bank with a CSV. Preview
+                          before importing, with duplicate detection.
+                        </p>
+                      </div>
+                      <button
+                        className="button"
+                        onClick={() => setModal("import")}
+                      >
+                        Import CSV <ArrowUpRight size={14} />
+                      </button>
+                    </div>
+                    <p className="source-note">
+                      <Info size={14} />
+                      Use one source per real account to avoid counting the same
+                      activity twice across Plaid, Actual, and CSV. USD totals
+                      exclude other currencies.
+                    </p>
+                  </details>
+                </>
+              )}
             </>
           )}
         </main>

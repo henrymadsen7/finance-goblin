@@ -7,6 +7,7 @@ const {
   dialog,
   nativeImage,
   safeStorage,
+  systemPreferences,
 } = require("electron");
 const { randomBytes } = require("node:crypto");
 const { join, resolve } = require("node:path");
@@ -80,6 +81,11 @@ function createWindow() {
       spellcheck: false,
       devTools: !app.isPackaged,
     },
+  });
+  window.on("app-command", (_event, command) => {
+    const nav = window.webContents.navigationHistory;
+    if (command === "browser-backward" && nav.canGoBack()) nav.goBack();
+    if (command === "browser-forward" && nav.canGoForward()) nav.goForward();
   });
   window.on("ready-to-show", () => window.show());
   window.on("resize", () => {
@@ -228,10 +234,33 @@ if (isPrimary)
       });
       await vaultKeys.finalize();
       appSession = session.fromPartition("finance-goblin");
-      appSession.setPermissionRequestHandler((contents, permission, callback) =>
-        callback(false),
+      const localMicrophone = (contents, permission, details) =>
+        permission === "media" &&
+        contents?.id === window?.webContents.id &&
+        contents.getURL().startsWith(origin + "/") &&
+        details?.mediaTypes?.length === 1 &&
+        details.mediaTypes[0] === "audio";
+      appSession.setPermissionRequestHandler(
+        async (contents, permission, callback, details) => {
+          if (!localMicrophone(contents, permission, details))
+            return callback(false);
+          try {
+            callback(
+              process.platform !== "darwin" ||
+                (await systemPreferences.askForMediaAccess("microphone")),
+            );
+          } catch {
+            callback(false);
+          }
+        },
       );
-      appSession.setPermissionCheckHandler(() => false);
+      appSession.setPermissionCheckHandler(
+        (contents, permission, requestingOrigin, details) =>
+          permission === "media" &&
+          contents?.id === window?.webContents.id &&
+          requestingOrigin === origin &&
+          details.mediaType === "audio",
+      );
       appSession.webRequest.onHeadersReceived((details, callback) => {
         if (details.url.startsWith(origin + "/"))
           callback({

@@ -2,10 +2,12 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
 import { readFileSync, existsSync } from "node:fs";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, hkdfSync } from "node:crypto";
 import { createServer as createHttpsServer } from "node:https";
 import { z } from "zod";
 import { createStore } from "./store.js";
+import { createLifeRouter } from "./life/router.js";
+import { createAssistantRouter } from "./assistant/index.js";
 import { runtimeSettings } from "./runtime.js";
 import { migratePlaidCategories } from "./migrations.js";
 import {
@@ -47,6 +49,20 @@ if (
     "Production Plaid vaults must be opened through the Finance Goblin desktop app. No bank data was served.",
   );
 }
+const subKey = (key, label) =>
+  key
+    ? Buffer.from(hkdfSync("sha256", key, Buffer.alloc(0), label, 32))
+    : undefined;
+const privateRoot = process.env.FINANCE_DATA_DIR || join(root, ".local");
+const lifeStore = createStore(join(privateRoot, "life"), {
+  key: subKey(runtime.vaultKey, "life-v1"),
+  previousKey: subKey(runtime.previousVaultKey, "life-v1"),
+});
+const assistantStore = createStore(join(privateRoot, "assistant"), {
+  key: subKey(runtime.vaultKey, "assistant-v1"),
+  previousKey: subKey(runtime.previousVaultKey, "assistant-v1"),
+});
+const lifeService = createLifeRouter(lifeStore, { origin, csrf });
 const app = express();
 app.disable("x-powered-by");
 app.use((req, res, next) => {
@@ -59,8 +75,7 @@ app.use((req, res, next) => {
     "X-Frame-Options": "DENY",
     "Cache-Control": "no-store",
     "Cross-Origin-Resource-Policy": "same-origin",
-    "Permissions-Policy":
-      "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "Permissions-Policy": `camera=(), microphone=${["/desktop-connect", "/oauth/callback"].includes(req.path) ? "()" : "(self)"}, geolocation=(), payment=(), usb=()`,
   });
   res.locals.cspNonce = randomBytes(18).toString("base64");
   const bankPage =
@@ -72,6 +87,26 @@ app.use((req, res, next) => {
     res.set({
       "Content-Security-Policy": `default-src 'self'; script-src 'self' 'nonce-${res.locals.cspNonce}'${bankPage ? " https://cdn.plaid.com/link/v2/stable/link-initialize.js" : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'${bankPage ? " https://production.plaid.com https://sandbox.plaid.com" : ""}; frame-src ${bankPage ? "https://cdn.plaid.com" : "'none'"}; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
     });
+  if (req.path === "/oauth/life/google" && req.method === "GET") {
+    void lifeService.google
+      .callback(req.query)
+      .then(() =>
+        res
+          .type("html")
+          .send(
+            "<!doctype html><title>Life connected</title><p>Google account connected. Return to Life and refresh this source.</p>",
+          ),
+      )
+      .catch(() =>
+        res
+          .status(400)
+          .type("html")
+          .send(
+            "<!doctype html><title>Connection incomplete</title><p>Google sign-in could not finish. Return to Life and start again.</p>",
+          ),
+      );
+    return;
+  }
   if (desktopAccess) {
     if (req.path === "/desktop/bank-authorize" && req.method === "GET") {
       const token = desktopAccess.redeemTicket(String(req.query.ticket || ""));
@@ -148,6 +183,14 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: "5mb" }));
+app.use("/api/life", lifeService.router);
+const assistantService = createAssistantRouter({
+  store: assistantStore,
+  life: lifeService.domain,
+  google: lifeService.google,
+  financeStore: store,
+});
+app.use("/api/assistant", assistantService);
 const wrap = (fn) => (req, res, next) =>
   Promise.resolve(fn(req, res, next)).catch(next);
 let syncing = false;
@@ -679,5 +722,7 @@ for (const signal of ["SIGINT", "SIGTERM"])
 
 export function stopService() {
   clearInterval(timer);
+  lifeService.close();
+  assistantService.memoryClose();
   httpServer.close();
 }

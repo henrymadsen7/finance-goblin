@@ -113,6 +113,8 @@ const result = await packager({
   asar: false,
   prune: false,
   extendInfo: {
+    NSMicrophoneUsageDescription:
+      "Record a voice message for local transcription in the assistant. Audio is not saved.",
     NSHumanReadableCopyright: "Finance Goblin · basedagent",
     NSHighResolutionCapable: true,
     NSRequiresAquaSystemAppearance: false,

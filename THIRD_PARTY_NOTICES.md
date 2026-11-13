@@ -351,3 +351,24 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
+
+## Life workspace additions
+
+- FullCalendar React, DayGrid, TimeGrid, List, Interaction and Core 6.1.22 — MIT, https://github.com/fullcalendar/fullcalendar and https://github.com/fullcalendar/fullcalendar-react . Only Standard plugins are used.
+- ical.js 2.2.1 — MPL-2.0, https://github.com/kewisch/ical.js . Consumed as an unmodified dependency; its license/source remain available in the installed package and upstream.
+- PDF.js (`pdfjs-dist`) 6.5.438 — Apache-2.0, https://github.com/mozilla/pdf.js . Consumed as an unmodified dependency for local PDF text extraction.
+- The People network visualization and headline-category rules were adapted from the owner's existing Connect application. Category spokes are keyword classifications, not inferred personal relationships.
+
+Hermes is an independently installed optional runtime, https://github.com/NousResearch/hermes-agent . It is not bundled or relicensed here. The local adapter uses Hermes's provider resolution and agent interface; it does not extract or redistribute OAuth credentials.
+
+Planning/calendar design references: Super Productivity (MIT), https://github.com/super-productivity/super-productivity ; Local Study OS (MIT), https://github.com/hijasonxu1/local-study-os . Their application source is not vendored. Calendar recurrence and date-handling logic in this project was independently implemented and tested. No Monica, Vikunja, or Study Manager code is copied into the application.
+
+- js-tiktoken 1.0.21 (MIT), with base64-js (MIT), estimates input context and enforces the local answer length cap.
+
+## Conversation library and memory
+
+- MiniSearch 7.2.0 — MIT, copyright Luca Ongaro and contributors; https://github.com/lucaong/minisearch . The unmodified dependency includes its license.
+- Three.js 0.187.0 / OrbitControls — MIT, copyright three.js authors; https://github.com/mrdoob/three.js . Existing dependency, used for memory graph rendering.
+- all-MiniLM-L6-v2 / Xenova ONNX conversion — Apache-2.0; https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2 and https://huggingface.co/Xenova/all-MiniLM-L6-v2 . Optional locally cached model; pinned revision and runtime details in docs/MEMORY.md. Model weights are not bundled in the application.
+
+Graphify (Graphify-Labs/graphify), Graphiti (getzep/graphiti), and Mem0 (mem0ai/mem0) were reviewed as Apache-2.0 design references. Their application source is not copied or bundled. See docs/MEMORY.md for revisions, primary links, applicable patterns and the independently implemented local architecture.
